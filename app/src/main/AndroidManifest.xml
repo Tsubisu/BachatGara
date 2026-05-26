@@ -12,6 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BachatGara">
         <activity
+            android:name=".Registration"
+            android:exported="false"
+            android:label="@string/title_activity_registration"
+            android:theme="@style/Theme.BachatGara">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".SplashBody"
             android:exported="true"
             android:label="@string/app_name"
@@ -33,7 +44,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity
             android:name=".ForgotPassword"
             android:exported="true"
@@ -45,20 +55,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".Registration"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.BachatGara">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-
     </application>
 
 </manifest>

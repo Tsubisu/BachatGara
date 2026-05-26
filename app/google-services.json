@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "37441040648",
+    "firebase_url": "https://bachatgara-649d6-default-rtdb.firebaseio.com",
+    "project_id": "bachatgara-649d6",
+    "storage_bucket": "bachatgara-649d6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:37441040648:android:7ba96f0b0dce571810fcbd",
+        "android_client_info": {
+          "package_name": "com.example.bachatgara"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4FH_MMpNZxFVVIghwyLtA4nTAV3pqTG8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
