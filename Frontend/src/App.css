@@ -1,0 +1,636 @@
+/* ==========================================
+   BachatGara Welcoming Design System (Spendee & Material-Inspired)
+   ========================================== */
+
+:root {
+  /* Font Family - Welcoming & Professional */
+  --font-family: 'Plus Jakarta Sans', 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Easing and Transitions */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --border-radius-sm: 0.5rem;    /* 8px */
+  --border-radius-md: 0.75rem;   /* 12px */
+  --border-radius-lg: 1rem;      /* 16px */
+  
+  /* Defaults: Warm Light Mode */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-accent: #f1f5f9;
+  --border-color: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --shadow-premium: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-accent: 0 8px 16px -4px rgba(16, 185, 129, 0.15);
+
+  /* Primary, Secondary, Tertiary System (Material Style) */
+  --color-primary: #10b981; /* Mint Default */
+  --color-primary-hover: #059669;
+  --color-secondary: #0f766e;
+  --color-tertiary: #d97706;
+  --color-danger: #ef4444;
+}
+
+/* ==========================================
+   User-Customizable Theme Swatches (Light Mode)
+   ========================================== */
+
+html[data-color-theme="mint"] {
+  --color-primary: #10b981;
+  --color-primary-hover: #059669;
+  --color-secondary: #0f766e;
+  --color-tertiary: #d97706;
+  --shadow-accent: 0 8px 16px -4px rgba(16, 185, 129, 0.15);
+}
+
+html[data-color-theme="ocean"] {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #1d4ed8;
+  --color-secondary: #4f46e5;
+  --color-tertiary: #0891b2;
+  --shadow-accent: 0 8px 16px -4px rgba(59, 130, 246, 0.15);
+}
+
+html[data-color-theme="sunset"] {
+  --color-primary: #f97316;
+  --color-primary-hover: #ea580c;
+  --color-secondary: #db2777;
+  --color-tertiary: #ca8a04;
+  --shadow-accent: 0 8px 16px -4px rgba(249, 115, 22, 0.15);
+}
+
+html[data-color-theme="sakura"] {
+  --color-primary: #ec4899;
+  --color-primary-hover: #db2777;
+  --color-secondary: #7c3aed;
+  --color-tertiary: #f43f5e;
+  --shadow-accent: 0 8px 16px -4px rgba(236, 72, 153, 0.15);
+}
+
+html[data-color-theme="slate"] {
+  --color-primary: #64748b;
+  --color-primary-hover: #475569;
+  --color-secondary: #334155;
+  --color-tertiary: #0f172a;
+  --shadow-accent: 0 8px 16px -4px rgba(100, 116, 139, 0.15);
+}
+
+/* ==========================================
+   Dark Mode Override
+   ========================================== */
+
+html[data-theme='dark'] {
+  --bg-primary: #121212;      /* Neutral carbon black */
+  --bg-secondary: #1e1e1e;    /* Deep charcoal */
+  --bg-accent: #2d2d2d;       /* Soft charcoal grey */
+  --border-color: #2b2b2b;    /* Clean outline border */
+  
+  --text-primary: #f5f5f7;    /* Soft clean off-white */
+  --text-secondary: #a1a1a6;  /* Welcoming neutral grey */
+  --text-muted: #5e5e62;
+  
+  --shadow-premium: 0 4px 10px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Material Design Tokens Mapping */
+.md-primary { color: var(--color-primary); }
+.bg-md-primary { background-color: var(--color-primary); color: #fff; }
+.md-secondary { color: var(--color-secondary); }
+.md-tertiary { color: var(--color-tertiary); }
+
+/* ==========================================
+   Global Reset & Styling Rules
+   ========================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* ==========================================
+   Spendee Layout Elements
+   ========================================== */
+
+.layout-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  position: relative;
+}
+
+/* Navigation Drawer */
+.drawer-aside {
+  width: 17.5rem;             /* 280px */
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;            /* 24px */
+  justify-content: space-between;
+  z-index: 100;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+}
+
+.drawer-aside.collapsed {
+  width: 4.5rem;              /* 72px */
+  padding: 1.5rem 0.625rem;    /* 24px 10px */
+}
+
+.drawer-toggle-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 2rem;                /* 32px */
+  height: 2rem;               /* 32px */
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  align-self: flex-end;
+  margin-bottom: 1rem;        /* 16px */
+  transition: var(--transition-smooth);
+}
+
+.drawer-toggle-btn:hover {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.drawer-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-bottom: 1.25rem;    /* 20px */
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.25rem;     /* 20px */
+  transition: var(--transition-smooth);
+}
+
+.drawer-aside.collapsed .drawer-profile {
+  padding-bottom: 0.75rem;    /* 12px */
+  margin-bottom: 0.75rem;     /* 12px */
+}
+
+.avatar-circle {
+  width: 3.75rem;             /* 60px */
+  height: 3.75rem;            /* 60px */
+  border-radius: 50%;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;         /* 20px */
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.75rem;     /* 12px */
+  transition: var(--transition-smooth);
+}
+
+.drawer-aside.collapsed .avatar-circle {
+  width: 2.5rem;              /* 40px */
+  height: 2.5rem;             /* 40px */
+  font-size: 0.875rem;        /* 14px */
+  margin-bottom: 0rem;
+}
+
+.profile-name {
+  font-size: 1rem;            /* 16px */
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.125rem;    /* 2px */
+  white-space: nowrap;
+}
+
+.profile-email {
+  font-size: 0.75rem;         /* 12px */
+  color: var(--text-secondary);
+  margin-bottom: 0.625rem;    /* 10px */
+  white-space: nowrap;
+}
+
+.profile-balance-badge {
+  background: var(--bg-accent);
+  border: 1px solid var(--border-color);
+  padding: 0.375rem 0.75rem;   /* 6px 12px */
+  border-radius: 1.25rem;      /* 20px */
+  font-size: 0.75rem;         /* 12px */
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.profile-balance-badge strong {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.drawer-menu {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;               /* 4px */
+  list-style: none;
+}
+
+.drawer-menu-item a {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 0.875rem;  /* 10px 14px */
+  border-radius: var(--border-radius-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.875rem;        /* 14px */
+  transition: var(--transition-smooth);
+  gap: 0.75rem;               /* 12px */
+}
+
+.drawer-menu-item a:hover {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.drawer-menu-item.active a {
+  background: var(--color-primary);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.drawer-menu-item span.label {
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.drawer-aside.collapsed .drawer-menu-item span.label,
+.drawer-aside.collapsed .profile-name,
+.drawer-aside.collapsed .profile-email,
+.drawer-aside.collapsed .profile-balance-badge,
+.drawer-aside.collapsed .drawer-footer span {
+  display: none;
+}
+
+.drawer-footer {
+  padding-top: 1.25rem;       /* 20px */
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;               /* 12px */
+}
+
+.drawer-aside.collapsed .drawer-footer {
+  padding-top: 0.75rem;       /* 12px */
+}
+
+/* Main Area Container */
+.main-content-area {
+  flex-grow: 1;
+  padding: 2rem 2.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.content-width-container {
+  width: 100%;
+  max-width: 75rem;           /* 1200px wide when sidebar is open */
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.layout-wrapper.sidebar-collapsed .content-width-container {
+  max-width: 90rem;           /* 1440px wide when sidebar is collapsed */
+}
+
+/* ==========================================
+   Spendee Card Design (Welcoming, Organic)
+   ========================================== */
+
+.glass-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem;            /* 24px */
+  box-shadow: var(--shadow-premium);
+  transition: var(--transition-smooth);
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Welcoming Rounded Buttons */
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  padding: 0.625rem 1.25rem;   /* 10px 20px */
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-accent);
+  transition: var(--transition-smooth);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: var(--shadow-accent), 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Theme Swatches */
+.theme-palette-grid {
+  display: flex;
+  gap: 0.75rem;               /* 12px */
+  margin-top: 0.75rem;        /* 12px */
+  flex-wrap: wrap;
+}
+
+.theme-swatch {
+  width: 3rem;                /* 48px */
+  height: 3rem;               /* 48px */
+  border-radius: 50%;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  border: 3px solid var(--bg-secondary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.theme-swatch:hover {
+  transform: scale(1.1);
+}
+
+.theme-swatch.active {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Category Customizer grid */
+.category-customizer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr)); /* 220px */
+  gap: 1rem;                  /* 16px */
+  margin-top: 1rem;           /* 16px */
+}
+
+.category-edit-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.75rem;           /* 12px */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;               /* 12px */
+}
+
+.category-edit-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;                /* 8px */
+}
+
+.category-icon-picker {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  width: 2rem;                /* 32px */
+  height: 2rem;               /* 32px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;            /* 16px */
+}
+
+.category-color-picker {
+  border: none;
+  width: 2rem;                /* 32px */
+  height: 2rem;               /* 32px */
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(0.5rem); } /* 8px */
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Custom inputs */
+input, select, textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;  /* 10px 14px */
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 500;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-primary);
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08);
+}
+
+/* Warning Banner Styles */
+.warning-banner {
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem 1rem;       /* 12px 16px */
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;               /* 12px */
+  margin-bottom: 1.5rem;      /* 24px */
+  font-weight: 600;
+  font-size: 0.875rem;        /* 14px */
+}
+
+.dark-warning-banner {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Responsive Overrides */
+@media (max-width: 48rem) {   /* 768px */
+  .layout-wrapper {
+    flex-direction: column;
+  }
+  .drawer-aside {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem;            /* 16px */
+  }
+  .drawer-aside.collapsed {
+    width: 100%;
+    padding: 1rem;            /* 16px */
+  }
+  .drawer-toggle-btn {
+    display: none;
+  }
+  .drawer-profile {
+    flex-direction: row;
+    justify-content: space-between;
+    border-bottom: none;
+    margin-bottom: 0.75rem;     /* 12px */
+    padding-bottom: 0;
+  }
+  .avatar-circle {
+    width: 2rem;              /* 32px */
+    height: 2rem;             /* 32px */
+    font-size: 0.75rem;        /* 12px */
+    margin-bottom: 0;
+  }
+  .profile-name, .profile-email, .profile-balance-badge {
+    font-size: 0.75rem;       /* 12px */
+  }
+  .drawer-menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.25rem;               /* 4px */
+  }
+  .drawer-menu-item a {
+    padding: 0.375rem 0.75rem;   /* 6px 12px */
+    font-size: 0.75rem;       /* 12px */
+  }
+  .drawer-footer {
+    display: none;
+  }
+  .main-content-area {
+    padding: 1rem;            /* 16px */
+  }
+}
+
+/* ==========================================
+   Redesigned Settings Sub-Navigation & Pages
+   ========================================== */
+
+.settings-layout-wrapper {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 1.5rem; /* 24px */
+  align-items: flex-start;
+}
+
+.settings-submenu-card {
+  padding: 1rem; /* 16px */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* 8px */
+}
+
+.settings-submenu-title {
+  font-weight: 700;
+  font-size: 0.9375rem; /* 15px */
+  padding: 0 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.settings-submenu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* 4px */
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem; /* 10px */
+  padding: 0.625rem 0.875rem; /* 10px 14px */
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8125rem; /* 13px */
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition-smooth);
+}
+
+.settings-nav-item:hover:not(.active) {
+  background-color: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.settings-nav-item.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.settings-view-panel {
+  min-height: 25rem; /* 400px */
+  padding: 1.5rem;
+}
+
+@media (max-width: 48rem) { /* 768px */
+  .settings-layout-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+.animate-wave {
+  animation: wave-animation 2.5s infinite;
+}
+
+@keyframes wave-animation {
+    0% { transform: rotate( 0.0deg) }
+   10% { transform: rotate(14.0deg) }
+   20% { transform: rotate(-8.0deg) }
+   30% { transform: rotate(14.0deg) }
+   40% { transform: rotate(-4.0deg) }
+   50% { transform: rotate(10.0deg) }
+   60% { transform: rotate( 0.0deg) }
+  100% { transform: rotate( 0.0deg) }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
