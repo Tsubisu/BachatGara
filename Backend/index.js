@@ -12,7 +12,7 @@ const LOCAL_NETWORK_REGEX = /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
+    if (!origin || process.env.NODE_ENV === 'test') return callback(null, true);
 
     if (PROD_ORIGIN) {
       return PROD_ORIGIN === origin
@@ -58,6 +58,12 @@ app.get('/', (req, res) => {
   res.json({ message: 'BachatGara Backend API is running successfully.' });
 });
 
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
+const { seedBanks } = require('./seedBanks');
+
+app.use('/api', apiLimiter);
+app.use('/api/auth', authLimiter);
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/accounts', require('./routes/accounts'));
@@ -68,15 +74,24 @@ app.use('/api/alerts', require('./routes/alerts'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/gateway', require('./routes/gateway'));
+app.use('/api/events', require('./routes/events'));
+app.use('/api/banks', require('./routes/banks'));
 
 const { errorHandler } = require('./middleware/errorHandler');
 
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
-  const localIP = getLocalIP();
-  console.log(`✅ BachatGara backend running on port ${PORT}`);
-  console.log(`   Local access:   http://localhost:${PORT}`);
-  console.log(`   Network access: http://${localIP}:${PORT}`);
-  console.log(`   ↑ Use the Network address above in the Android app.`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  seedBanks().catch(err => console.error('Auto seed banks failed:', err));
+
+  app.listen(PORT, '0.0.0.0', () => {
+    const localIP = getLocalIP();
+    console.log(`✅ BachatGara backend running on port ${PORT}`);
+    console.log(`   Local access:   http://localhost:${PORT}`);
+    console.log(`   Network access: http://${localIP}:${PORT}`);
+    console.log(`   ↑ Use the Network address above in the Android app.`);
+  });
+}
+
+module.exports = app;
+

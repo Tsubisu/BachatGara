@@ -1,25 +1,41 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, ShieldCheck, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, AlertCircle, CheckCircle2, Eye, EyeOff, Camera, Upload } from 'lucide-react';
 import { profileApi, setUser } from '../../services/api';
 
 export default function ProfileSettings({ user, onDataRefresh }) {
   const [profileName, setProfileName] = useState(user?.profile_name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Password & Email changes require verification
-  const isSecuritySensitive = 
-    email.trim().toLowerCase() !== (user?.email || '').toLowerCase() || 
+  const isSecuritySensitive =
+    email.trim().toLowerCase() !== (user?.email || '').toLowerCase() ||
     newPassword.length > 0;
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Avatar image size must be smaller than 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAvatarUrl(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +67,7 @@ export default function ProfileSettings({ user, onDataRefresh }) {
         profile_name: profileName.trim(),
         theme: user?.theme || 'dark',
         email: email.trim(),
+        avatar_url: avatarUrl,
       };
 
       if (isSecuritySensitive) {
@@ -61,23 +78,23 @@ export default function ProfileSettings({ user, onDataRefresh }) {
       }
 
       const res = await profileApi.update(payload);
-      
-      // Update local storage user details
+
       setUser({
         ...user,
         profile_name: res.profile_name,
         email: res.email,
-        theme: res.theme
+        theme: res.theme,
+        avatar_url: res.avatar_url,
       });
 
-      setSuccess('Profile details updated successfully!');
+      setSuccess('Profile details and avatar updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmPassword(false);
-      
+
       if (onDataRefresh) {
         await onDataRefresh();
       }
@@ -92,7 +109,7 @@ export default function ProfileSettings({ user, onDataRefresh }) {
     <div>
       <h2 style={{ fontWeight: '700', fontSize: '20px', marginBottom: '6px' }}>👤 Personal Details</h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
-        Keep your name, contact email, and account credentials updated.
+        Manage your profile avatar, personal details, contact email, and security password.
       </p>
 
       {error && (
@@ -119,9 +136,38 @@ export default function ProfileSettings({ user, onDataRefresh }) {
         </div>
       )}
 
+      {/* Avatar Data Stream Uploader */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', width: 'fit-content' }}>
+        <div style={{ position: 'relative', width: '72px', height: '72px', borderRadius: '50%', background: 'var(--bg-secondary)', border: '2px solid var(--color-primary)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="User Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <User size={36} color="var(--text-muted)" />
+          )}
+        </div>
+        <div>
+          <strong style={{ display: 'block', fontSize: '14px', color: 'var(--text-primary)', marginBottom: '4px' }}>
+            User Avatar Profile Picture
+          </strong>
+          <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+            Stored directly in PostgreSQL database as a Base64 data stream.
+          </span>
+          <label style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 14px', fontSize: '12px', fontWeight: '600',
+            background: 'var(--bg-accent)', color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)',
+            cursor: 'pointer'
+          }}>
+            <Upload size={14} />
+            <span>Upload New Avatar</span>
+            <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+          </label>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '480px' }}>
-        
-        {/* Name Input */}
+
         <div>
           <label style={{ display: 'block', marginBottom: '6px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Profile Name
@@ -139,7 +185,6 @@ export default function ProfileSettings({ user, onDataRefresh }) {
           </div>
         </div>
 
-        {/* Email Input */}
         <div>
           <label style={{ display: 'block', marginBottom: '6px', color: 'var(--text-secondary)', fontWeight: '600', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Email Address

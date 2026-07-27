@@ -19,7 +19,11 @@ data class SyncAlertRequest(
 data class AccountDto(
     val id: String,
     val name: String,
-    val account_mask: String?
+    val account_mask: String?,
+    val is_active: Boolean? = true,
+    val type: String? = null,
+    val balance: Double? = 0.0,
+    val senderShortcodes: List<String>? = emptyList()
 )
 
 data class ServerInfoResponse(
@@ -47,13 +51,16 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<List<AccountDto>>
 
-    /** Called every 30s by the background heartbeat job */
+    @GET("/api/accounts/active")
+    suspend fun getActiveAccounts(
+        @Header("Authorization") token: String
+    ): Response<List<AccountDto>>
+
     @POST("/api/gateway/heartbeat")
     suspend fun heartbeat(
         @Header("Authorization") token: String
     ): Response<HeartbeatResponse>
 
-    /** No auth — used to verify connectivity before login */
     @GET("/api/server-info")
     suspend fun serverInfo(): Response<ServerInfoResponse>
 }

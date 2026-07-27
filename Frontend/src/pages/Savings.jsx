@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { Target, Calendar, Landmark, Check, Trash2, ShieldAlert } from 'lucide-react';
 import { goalsApi } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
-export default function Savings({ 
-  savings = [], 
-  setSavings, 
-  netSavings = 0, 
-  setNetSavings, 
-  trackedAccounts = [], 
+export default function Savings({
+  savings = [],
+  setSavings,
+  netSavings = 0,
+  setNetSavings,
+  trackedAccounts = [],
   setTrackedAccounts,
   onDataRefresh
 }) {
+  const { showConfirm, showAlert } = useDialog();
   const [name, setName] = useState('');
   const [target, setTarget] = useState('');
   const [date, setDate] = useState('');
 
-  // Funding Modal states
   const [showFundModal, setShowFundModal] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [fundAmount, setFundAmount] = useState('');
@@ -80,14 +81,17 @@ export default function Savings({
     }
   };
 
-  const handleDeleteGoal = async (id) => {
-    if (confirm('Are you sure you want to delete this savings goal?')) {
-      try {
-        await goalsApi.remove(id);
-        if (onDataRefresh) await onDataRefresh();
-      } catch (err) {
-        alert(`Failed to delete savings goal: ${err.message}`);
-      }
+  const handleDeleteGoal = async (id, goalName) => {
+    const confirmed = await showConfirm(
+      `Are you sure you want to delete the savings goal "${goalName || ''}"?`,
+      { title: 'Delete Savings Goal', type: 'error', confirmLabel: 'Delete Goal', cancelLabel: 'Cancel' }
+    );
+    if (!confirmed) return;
+    try {
+      await goalsApi.remove(id);
+      if (onDataRefresh) await onDataRefresh();
+    } catch (err) {
+      await showAlert(`Failed to delete savings goal: ${err.message}`, { type: 'error', title: 'Error' });
     }
   };
 
@@ -95,8 +99,7 @@ export default function Savings({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Dynamic Summary Cards */}
+
       <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-secondary)', padding: '20px', borderLeft: '4px solid var(--color-primary)' }}>
         <div>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Net Savings Balance</span>
@@ -107,30 +110,29 @@ export default function Savings({
         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Secured across {(savings || []).length} active targets</span>
       </div>
 
-      {/* Create Goal Form */}
       <div className="glass-card">
         <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '17px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span>🐖 Setup a New Savings Goal</span>
         </h3>
         <form onSubmit={handleAddGoal} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <input 
-            type="text" 
-            placeholder="Goal name (e.g. Buy laptop)" 
+          <input
+            type="text"
+            placeholder="Goal name (e.g. Buy laptop)"
             value={name}
             onChange={e => setName(e.target.value)}
             required
             style={{ flex: 2 }}
           />
-          <input 
-            type="number" 
-            placeholder="Target (Rs.)" 
+          <input
+            type="number"
+            placeholder="Target (Rs.)"
             value={target}
             onChange={e => setTarget(e.target.value)}
             required
             style={{ flex: 1, minWidth: '120px' }}
           />
-          <input 
-            type="date" 
+          <input
+            type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
             style={{ flex: 1, minWidth: '120px' }}
@@ -139,10 +141,9 @@ export default function Savings({
         </form>
       </div>
 
-      {/* Grid List */}
       <div className="glass-card">
         <h3 style={{ marginBottom: '18px', fontWeight: '700', fontSize: '17px' }}>🎯 Track Active Goals</h3>
-        
+
         {savings.length === 0 ? (
           <div style={{ color: 'var(--text-secondary)', fontSize: '13px', textAlign: 'center', padding: '24px' }}>No active savings goals. Create one above to get started!</div>
         ) : (
@@ -150,16 +151,16 @@ export default function Savings({
             {savings.map(s => {
               const percentage = (s.current / s.target) * 100;
               return (
-                <div 
-                  key={s.id} 
-                  style={{ 
-                    padding: '20px', 
-                    background: 'var(--bg-primary)', 
-                    border: '1px solid var(--border-color)', 
-                    borderRadius: 'var(--border-radius-md)', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '12px' 
+                <div
+                  key={s.id}
+                  style={{
+                    padding: '20px',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--border-radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
                   }}
                 >
                   <div>
@@ -177,17 +178,17 @@ export default function Savings({
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                    <button 
-                      onClick={() => handleOpenFundModal(s.id)} 
-                      className="btn-primary" 
+                    <button
+                      onClick={() => handleOpenFundModal(s.id)}
+                      className="btn-primary"
                       style={{ flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                     >
                       <Landmark size={14} />
                       <span>+ Fund Goal</span>
                     </button>
-                    <button 
-                      onClick={() => handleDeleteGoal(s.id)} 
-                      className="btn-primary" 
+                    <button
+                      onClick={() => handleDeleteGoal(s.id, s.name)}
+                      className="btn-primary"
                       style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', flex: 1, padding: '8px 12px', fontSize: '12px', borderRadius: '8px', boxShadow: 'none' }}
                     >
                       Delete
@@ -200,9 +201,6 @@ export default function Savings({
         )}
       </div>
 
-      {/* ==========================================
-         GOAL FUNDING TRANSACTION MODAL (POPUP)
-         ========================================== */}
       {showFundModal && selectedGoal && (
         <div style={{
           position: 'fixed',
@@ -221,13 +219,13 @@ export default function Savings({
             <h3 style={{ fontWeight: '800', fontSize: '17px', color: 'var(--text-primary)' }}>
               🐖 Fund Goal: "{selectedGoal.name}"
             </h3>
-            
+
             <form onSubmit={handleConfirmFunding} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Draw Cash From Bank Account</label>
-                <select 
-                  value={sourceAccId} 
-                  onChange={e => setSourceAccId(e.target.value)} 
+                <select
+                  value={sourceAccId}
+                  onChange={e => setSourceAccId(e.target.value)}
                   required
                 >
                   <option value="">-- Select Bank --</option>
@@ -241,10 +239,10 @@ export default function Savings({
 
               <div>
                 <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Funding Amount (Rs.)</label>
-                <input 
-                  type="number" 
-                  placeholder="e.g. 5000" 
-                  value={fundAmount} 
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={fundAmount}
                   onChange={e => setFundAmount(e.target.value)}
                   max={(selectedGoal.target || 0) - (selectedGoal.current || 0)}
                   required
@@ -255,9 +253,9 @@ export default function Savings({
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button 
-                  type="button" 
-                  className="btn-primary" 
+                <button
+                  type="button"
+                  className="btn-primary"
                   onClick={() => setShowFundModal(false)}
                   style={{ flex: 1, background: 'var(--bg-accent)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', boxShadow: 'none' }}
                 >

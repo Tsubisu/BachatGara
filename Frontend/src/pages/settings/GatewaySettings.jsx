@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { gatewayApi } from '../../services/api';
 import { Smartphone, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
-// Poll every 30 seconds — matches Android heartbeat interval
 const POLL_INTERVAL_MS = 30_000;
 
 export default function GatewaySettings() {
-  const [status, setStatus]   = useState(null);   // null = loading
+  const [status, setStatus]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
@@ -22,7 +21,6 @@ export default function GatewaySettings() {
     }
   }, []);
 
-  // Initial fetch + recurring poll
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, POLL_INTERVAL_MS);
@@ -41,7 +39,6 @@ export default function GatewaySettings() {
         When the BachatGara Android app is running on your gateway phone, it forwards parsed bank SMS alerts to your web resolution queue automatically. The status below reflects the live connection.
       </p>
 
-      {/* Live Status Card */}
       <div style={{
         padding: '20px',
         background: 'var(--bg-primary)',
@@ -54,7 +51,7 @@ export default function GatewaySettings() {
         transition: 'border-color 0.4s ease',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          {/* Animated status dot */}
+
           <div style={{ position: 'relative', width: '36px', height: '36px', flexShrink: 0 }}>
             <div style={{
               width: '36px', height: '36px', borderRadius: '50%',
@@ -68,7 +65,7 @@ export default function GatewaySettings() {
                   : <WifiOff size={16} style={{ color: '#ef4444' }} />
               }
             </div>
-            {/* Pulse ring — only when online */}
+
             {!loading && isOnline && (
               <span style={{
                 position: 'absolute', inset: 0, borderRadius: '50%',
@@ -98,7 +95,6 @@ export default function GatewaySettings() {
           </div>
         </div>
 
-        {/* Status badge */}
         {!loading && (
           <span style={{
             fontWeight: '700', fontSize: '12px', padding: '5px 14px',
@@ -112,14 +108,12 @@ export default function GatewaySettings() {
         )}
       </div>
 
-      {/* Status message */}
       {!loading && status?.message && (
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '10px', fontStyle: 'italic' }}>
           {status.message}
         </p>
       )}
 
-      {/* Setup instructions (shown when offline) */}
       {!loading && !isOnline && (
         <div style={{
           marginTop: '20px', padding: '16px 18px',
@@ -140,7 +134,6 @@ export default function GatewaySettings() {
         </div>
       )}
 
-      {/* Refresh button */}
       <button
         onClick={() => { setLoading(true); fetchStatus(); }}
         className="btn-primary"
@@ -150,7 +143,6 @@ export default function GatewaySettings() {
         Refresh Status
       </button>
 
-      {/* CSS animations */}
       <style>{`
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }

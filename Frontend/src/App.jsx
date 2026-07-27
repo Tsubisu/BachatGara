@@ -21,11 +21,12 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyResetOtp from './pages/VerifyResetOtp';
+import { DialogProvider } from './context/DialogContext';
 
 import {
   getToken, clearToken, clearUser, getUser,
   accountsApi, transactionsApi, budgetsApi,
-  goalsApi, subscriptionsApi, alertsApi, profileApi, categoriesApi
+  goalsApi, subscriptionsApi, alertsApi, profileApi, categoriesApi, subscribeToEvents
 } from './services/api';
 
 const defaultCategories = [
@@ -53,6 +54,7 @@ export default function App() {
   const [colorTheme, setColorTheme] = useState(() => localStorage.getItem('color-theme') || 'mint');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
 
+  const [currentUser, setCurrentUser] = useState(() => getUser());
   const [transactions, setTransactions] = useState([]);
   const [budgetPlans, setBudgetPlans] = useState([]);
   const [savings, setSavings] = useState([]);
@@ -102,13 +104,24 @@ export default function App() {
         categoriesApi.list(),
       ]);
 
-      setTrackedAccounts(Array.isArray(accsData) ? accsData.map(a => ({
+      let cashSeen = false;
+      const parsedAccs = Array.isArray(accsData) ? accsData.map(a => ({
         id: a.id,
         bankName: a.name || 'Bank',
         accountMask: a.account_mask || '',
         balance: parseFloat(a.balance || 0),
         type: a.type,
-      })) : []);
+        logo_url: a.logo_url,
+        isActive: a.is_active !== false,
+      })).filter(a => {
+        if (a.type === 'cash' || (a.bankName && a.bankName.toLowerCase() === 'cash')) {
+          if (cashSeen) return false;
+          cashSeen = true;
+        }
+        return true;
+      }) : [];
+
+      setTrackedAccounts(parsedAccs);
 
       setTransactions(Array.isArray(txData) ? txData.map(t => ({
         id: t.id,
@@ -119,6 +132,7 @@ export default function App() {
               (!t.source_account_id && t.destination_account_id ? 'income' : 'transfer'),
         category: t.category_name || 'Other',
         account: t.source_account_name || t.destination_account_name || 'Unknown',
+        logo_url: t.source_account_logo || t.destination_account_logo || null,
       })) : []);
 
       setBudgetPlans(Array.isArray(budgetData) ? budgetData.map(p => ({
@@ -128,7 +142,7 @@ export default function App() {
         endDate: p.end_date,
         totalPool: parseFloat(p.total_pool || 0),
         active: p.active,
-        allocations: p.allocations || {},
+        allocations: p.allocations || [],
       })) : []);
 
       setSavings(Array.isArray(goalsData) ? goalsData.map(g => ({
@@ -159,6 +173,9 @@ export default function App() {
       })) : []);
 
       setNetSavings(parseFloat(profileData?.net_savings || 0));
+      if (profileData) {
+        setCurrentUser(profileData);
+      }
       setCategories(Array.isArray(catsData) && catsData.length > 0 ? catsData : defaultCategories);
 
     } catch (err) {
@@ -169,11 +186,21 @@ export default function App() {
 
   useEffect(() => {
     loadAllData();
+
+    const eventSource = subscribeToEvents((data) => {
+      if (data.type === 'alert' || data.type === 'transaction' || data.type === 'account') {
+        loadAllData();
+      }
+    });
+
     const interval = setInterval(() => {
       loadAllData();
-    }, 3000);
+    }, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(interval);
+    };
   }, [loadAllData]);
 
   const handleLogout = () => {
@@ -184,111 +211,118 @@ export default function App() {
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
-  const netCashValue = trackedAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const netCashValue = trackedAccounts.filter(a => a.isActive !== false).reduce((sum, acc) => sum + acc.balance, 0);
+  const activePlan = (budgetPlans || []).find(p => p.active);
+  const unreadCount = (unresolvedAlerts || []).filter(a => !a.resolved).length;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login onLoginSuccess={loadAllData} />} />
-        <Route path="/register" element={<Register onRegisterSuccess={loadAllData} />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <DialogProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login onLoginSuccess={loadAllData} />} />
+          <Route path="/register" element={<Register onRegisterSuccess={loadAllData} />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        <Route path="*" element={
-          <ProtectedRoute>
-            <PageWrapper
-              theme={theme}
-              toggleTheme={toggleTheme}
-              balance={netCashValue}
-              sidebarCollapsed={sidebarCollapsed}
-              setSidebarCollapsed={setSidebarCollapsed}
-              onLogout={handleLogout}
-              user={getUser()}
-            >
-              <Routes>
-                <Route path="/" element={
-                  <Dashboard
-                    user={getUser()}
-                    transactions={transactions}
-                    setTransactions={setTransactions}
-                    budgetPlans={budgetPlans}
-                    setBudgetPlans={setBudgetPlans}
-                    balance={netCashValue}
-                    categories={categories}
-                    trackedAccounts={trackedAccounts}
-                    setTrackedAccounts={setTrackedAccounts}
-                    unresolvedAlerts={unresolvedAlerts}
-                    setUnresolvedAlerts={setUnresolvedAlerts}
-                    netSavings={netSavings}
-                    setNetSavings={setNetSavings}
-                    onDataRefresh={loadAllData}
-                  />
-                } />
-                <Route path="/transactions" element={
-                  <Transactions
-                    transactions={transactions}
-                    setTransactions={setTransactions}
-                    categories={categories}
-                    trackedAccounts={trackedAccounts}
-                    onDataRefresh={loadAllData}
-                  />
-                } />
-                <Route path="/analytics" element={
-                  <Analytics
-                    transactions={transactions}
-                    budgetPlans={budgetPlans}
-                    categories={categories}
-                  />
-                } />
-                <Route path="/budgets" element={
-                  <Budgets
-                    budgetPlans={budgetPlans}
-                    setBudgetPlans={setBudgetPlans}
-                    categories={categories}
-                    transactions={transactions}
-                    balance={netCashValue}
-                    onDataRefresh={loadAllData}
-                  />
-                } />
-                <Route path="/savings" element={
-                  <Savings
-                    savings={savings}
-                    setSavings={setSavings}
-                    netSavings={netSavings}
-                    setNetSavings={setNetSavings}
-                    trackedAccounts={trackedAccounts}
-                    setTrackedAccounts={setTrackedAccounts}
-                    balance={netCashValue}
-                    onDataRefresh={loadAllData}
-                  />
-                } />
-                <Route path="/subscriptions" element={
-                  <Subscriptions
-                    subscriptions={subscriptions}
-                    setSubscriptions={setSubscriptions}
-                    trackedAccounts={trackedAccounts}
-                    onDataRefresh={loadAllData}
-                  />
-                } />
-                <Route path="/settings/*" element={
-                  <SettingsLayout>
-                    <Routes>
-                      <Route path="profile" element={<ProfileSettings user={getUser()} onDataRefresh={loadAllData} />} />
-                      <Route path="theme" element={<ThemeSettings theme={theme} toggleTheme={toggleTheme} colorTheme={colorTheme} setColorTheme={setColorTheme} />} />
-                      <Route path="accounts" element={<AccountSettings trackedAccounts={trackedAccounts} setTrackedAccounts={setTrackedAccounts} onDataRefresh={loadAllData} />} />
-                      <Route path="categories" element={<CategorySettings categories={categories} onDataRefresh={loadAllData} />} />
-                      <Route path="gateway" element={<GatewaySettings />} />
-                      <Route path="*" element={<Navigate to="profile" replace />} />
-                    </Routes>
-                  </SettingsLayout>
-                } />
-              </Routes>
-            </PageWrapper>
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={
+            <ProtectedRoute>
+              <PageWrapper
+                theme={theme}
+                toggleTheme={toggleTheme}
+                balance={netCashValue}
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+                onLogout={handleLogout}
+                user={currentUser || getUser()}
+              >
+                <Routes>
+                  <Route path="/" element={
+                    <Dashboard
+                      user={currentUser || getUser()}
+                      transactions={transactions}
+                      setTransactions={setTransactions}
+                      budgetPlans={budgetPlans}
+                      setBudgetPlans={setBudgetPlans}
+                      balance={netCashValue}
+                      categories={categories}
+                      trackedAccounts={trackedAccounts}
+                      setTrackedAccounts={setTrackedAccounts}
+                      unresolvedAlerts={unresolvedAlerts}
+                      setUnresolvedAlerts={setUnresolvedAlerts}
+                      netSavings={netSavings}
+                      setNetSavings={setNetSavings}
+                      onDataRefresh={loadAllData}
+                    />
+                  } />
+                  <Route path="/transactions" element={
+                    <Transactions
+                      transactions={transactions}
+                      setTransactions={setTransactions}
+                      categories={categories}
+                      trackedAccounts={trackedAccounts}
+                      onDataRefresh={loadAllData}
+                    />
+                  } />
+                  <Route path="/analytics" element={
+                    <Analytics
+                      transactions={transactions}
+                      budgetPlans={budgetPlans}
+                      categories={categories}
+                      trackedAccounts={trackedAccounts}
+                      netSavingsPool={netSavings}
+                    />
+                  } />
+                  <Route path="/budgets" element={
+                    <Budgets
+                      budgetPlans={budgetPlans}
+                      setBudgetPlans={setBudgetPlans}
+                      activePlan={activePlan}
+                      categories={categories}
+                      transactions={transactions}
+                      balance={netCashValue}
+                      onDataRefresh={loadAllData}
+                    />
+                  } />
+                  <Route path="/savings" element={
+                    <Savings
+                      savings={savings}
+                      setSavings={setSavings}
+                      netSavings={netSavings}
+                      setNetSavings={setNetSavings}
+                      trackedAccounts={trackedAccounts}
+                      setTrackedAccounts={setTrackedAccounts}
+                      balance={netCashValue}
+                      onDataRefresh={loadAllData}
+                    />
+                  } />
+                  <Route path="/subscriptions" element={
+                    <Subscriptions
+                      subscriptions={subscriptions}
+                      setSubscriptions={setSubscriptions}
+                      trackedAccounts={trackedAccounts}
+                      onDataRefresh={loadAllData}
+                    />
+                  } />
+                  <Route path="/settings/*" element={
+                    <SettingsLayout>
+                      <Routes>
+                        <Route path="profile" element={<ProfileSettings user={currentUser || getUser()} onDataRefresh={loadAllData} />} />
+                        <Route path="theme" element={<ThemeSettings theme={theme} toggleTheme={toggleTheme} colorTheme={colorTheme} setColorTheme={setColorTheme} />} />
+                        <Route path="accounts" element={<AccountSettings trackedAccounts={trackedAccounts} setTrackedAccounts={setTrackedAccounts} onDataRefresh={loadAllData} />} />
+                        <Route path="categories" element={<CategorySettings theme={theme} categories={categories} onDataRefresh={loadAllData} />} />
+                        <Route path="gateway" element={<GatewaySettings />} />
+                        <Route path="*" element={<Navigate to="profile" replace />} />
+                      </Routes>
+                    </SettingsLayout>
+                  } />
+                </Routes>
+              </PageWrapper>
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </BrowserRouter>
+    </DialogProvider>
   );
 }

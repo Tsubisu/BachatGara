@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     type VARCHAR(20) NOT NULL CHECK (type IN ('cash', 'bank', 'wallet', 'other')),
     currency VARCHAR(10) DEFAULT 'NPR',
     balance NUMERIC(12, 2) DEFAULT 0.00 CHECK (balance >= 0),
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, name)
 );

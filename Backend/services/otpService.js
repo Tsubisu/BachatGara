@@ -2,26 +2,16 @@ const db = require('../db');
 const emailService = require('./emailService');
 const AppError = require('../utils/AppError');
 
-/**
- * Generates a 6-digit numeric OTP code.
- * @returns {string}
- */
 const generateNumericOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-/**
- * Sends a new OTP to the specified email, checking rate limits.
- * @param {string} email
- * @param {string} purpose 'password_reset' or 'email_verification'
- */
 const sendOtp = async (email, purpose) => {
   const cleanEmail = email.toLowerCase().trim();
 
-  // 1. Check Rate Limiting (1-minute send cooldown)
   const recentOtpQuery = await db.query(
-    `SELECT created_at FROM otps 
-     WHERE email = $1 AND purpose = $2 
+    `SELECT created_at FROM otps
+     WHERE email = $1 AND purpose = $2
      ORDER BY created_at DESC LIMIT 1`,
     [cleanEmail, purpose]
   );
@@ -35,23 +25,20 @@ const sendOtp = async (email, purpose) => {
     }
   }
 
-  // 2. Generate and store new OTP
   const code = generateNumericOtp();
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-  // Clear previous OTPs of same purpose for this email to prevent spam/concurrency issues
   await db.query(
     'DELETE FROM otps WHERE email = $1 AND purpose = $2',
     [cleanEmail, purpose]
   );
 
   await db.query(
-    `INSERT INTO otps (email, code, purpose, expires_at) 
+    `INSERT INTO otps (email, code, purpose, expires_at)
      VALUES ($1, $2, $3, $4)`,
     [cleanEmail, code, purpose, expiresAt]
   );
 
-  // 3. Send email based on purpose
   let subject = 'BachatGara Verification Code';
   let html = `
     <div style="font-family: sans-serif; padding: 20px; color: #1f2937;">
@@ -91,20 +78,12 @@ const sendOtp = async (email, purpose) => {
   return { message: 'OTP sent successfully.' };
 };
 
-/**
- * Verifies an OTP code.
- * @param {string} email
- * @param {string} code
- * @param {string} purpose
- * @returns {boolean}
- */
 const verifyOtp = async (email, code, purpose) => {
   const cleanEmail = email.toLowerCase().trim();
   const cleanCode = code.trim();
 
-  // Find valid OTP
   const result = await db.query(
-    `SELECT * FROM otps 
+    `SELECT * FROM otps
      WHERE email = $1 AND code = $2 AND purpose = $3 AND expires_at > NOW()`,
     [cleanEmail, cleanCode, purpose]
   );
@@ -113,7 +92,6 @@ const verifyOtp = async (email, code, purpose) => {
     return false;
   }
 
-  // Delete validated OTP to prevent replay attacks
   await db.query(
     'DELETE FROM otps WHERE email = $1 AND purpose = $2',
     [cleanEmail, purpose]
@@ -122,19 +100,12 @@ const verifyOtp = async (email, code, purpose) => {
   return true;
 };
 
-/**
- * Checks if an OTP code is valid without deleting it.
- * @param {string} email
- * @param {string} code
- * @param {string} purpose
- * @returns {boolean}
- */
 const checkOtp = async (email, code, purpose) => {
   const cleanEmail = email.toLowerCase().trim();
   const cleanCode = code.trim();
 
   const result = await db.query(
-    `SELECT * FROM otps 
+    `SELECT * FROM otps
      WHERE email = $1 AND code = $2 AND purpose = $3 AND expires_at > NOW()`,
     [cleanEmail, cleanCode, purpose]
   );

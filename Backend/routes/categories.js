@@ -2,7 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/categoryController');
 const auth = require('../middleware/authMiddleware');
 
-router.use(auth); // All category routes require authentication
+router.use(auth);
 
 router.get('/', ctrl.list);
 router.post('/', ctrl.upsert);

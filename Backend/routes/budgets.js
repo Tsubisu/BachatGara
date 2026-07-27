@@ -4,7 +4,7 @@ const auth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const v = require('../validators/budgetValidators');
 
-router.use(auth); // All budget routes require authentication
+router.use(auth);
 
 router.get('/plans', ctrl.listPlans);
 router.post('/plans', validate(v.createPlan), ctrl.createPlan);

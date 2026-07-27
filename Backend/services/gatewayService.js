@@ -1,7 +1,5 @@
 const userRepo = require('../repositories/userRepository');
 
-// Gateway is "online" if a heartbeat arrived within 90s.
-// Android app sends every 30s, so 3 missed beats => offline.
 const ONLINE_THRESHOLD_MS = 90 * 1000;
 
 const recordHeartbeat = async (userId) => {

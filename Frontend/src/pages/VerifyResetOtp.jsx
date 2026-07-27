@@ -12,9 +12,8 @@ export default function VerifyResetOtp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [timer, setTimer] = useState(60); // Start at 60s cooldown on mount
+  const [timer, setTimer] = useState(60);
 
-  // Set up resend cooldown timer
   useEffect(() => {
     if (timer <= 0) return;
     const intervalId = setInterval(() => {
@@ -23,7 +22,6 @@ export default function VerifyResetOtp() {
     return () => clearInterval(intervalId);
   }, [timer]);
 
-  // Redirect if no email state is passed
   useEffect(() => {
     if (!email) {
       navigate('/forgot-password');
@@ -62,10 +60,10 @@ export default function VerifyResetOtp() {
     try {
       await authApi.resendOtp(email, 'password_reset');
       setSuccess('A new password reset code has been sent.');
-      setTimer(60); // 1 minute cooldown
+      setTimer(60);
     } catch (err) {
       setError(err.message || 'Failed to resend code.');
-      // Extract seconds from error message if rate-limited (e.g. "Please wait 45 second(s)...")
+
       const match = err.message?.match(/wait\s+(\d+)\s+second/i);
       if (match) {
         setTimer(parseInt(match[1], 10));
@@ -85,7 +83,7 @@ export default function VerifyResetOtp() {
       background: 'var(--bg-primary)'
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Header */}
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
             width: '56px', height: '56px',

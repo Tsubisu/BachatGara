@@ -2,7 +2,7 @@ const db = require('../db');
 
 const findAllByUser = (userId) =>
   db.query(
-    `SELECT t.*, 
+    `SELECT t.*,
             c.name  AS category_name, c.icon AS category_icon, c.color AS category_color,
             sa.name AS source_account_name,
             da.name AS destination_account_name
@@ -17,7 +17,7 @@ const findAllByUser = (userId) =>
 
 const createExpense = (userId, sourceAccountId, categoryId, amount, description, date) =>
   db.query(
-    `INSERT INTO transactions 
+    `INSERT INTO transactions
        (user_id, source_account_id, category_id, amount, description, date)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [userId, sourceAccountId, categoryId, amount, description, date]
@@ -25,7 +25,7 @@ const createExpense = (userId, sourceAccountId, categoryId, amount, description,
 
 const createIncome = (userId, destAccountId, categoryId, amount, description, date) =>
   db.query(
-    `INSERT INTO transactions 
+    `INSERT INTO transactions
        (user_id, destination_account_id, category_id, amount, description, date)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [userId, destAccountId, categoryId, amount, description, date]
@@ -33,7 +33,7 @@ const createIncome = (userId, destAccountId, categoryId, amount, description, da
 
 const createTransfer = (userId, sourceId, destId, amount, description, date) =>
   db.query(
-    `INSERT INTO transactions 
+    `INSERT INTO transactions
        (user_id, source_account_id, destination_account_id, amount, description, date)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
     [userId, sourceId, destId, amount, description, date]

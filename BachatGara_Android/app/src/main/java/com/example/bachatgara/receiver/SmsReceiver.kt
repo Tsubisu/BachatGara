@@ -32,7 +32,7 @@ class SmsReceiver : BroadcastReceiver() {
             val timestampMillis = sms.timestampMillis
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(timestampMillis))
 
-            if (!isBankSms(sender, body)) {
+            if (!isBankSms(context, sender, body)) {
                 Log.d("SmsReceiver", "Ignored non-bank SMS locally from $sender")
                 continue
             }
@@ -104,19 +104,46 @@ class SmsReceiver : BroadcastReceiver() {
         }
     }
 
-    fun isBankSms(sender: String, body: String): Boolean {
+    fun isBankSms(sender: String, body: String): Boolean = isBankSms(null, sender, body)
+
+    fun isBankSms(context: Context?, sender: String, body: String): Boolean {
         val cleanSender = sender.trim().uppercase()
         val cleanBody = body.trim()
 
-        val isOtpOrSecurity = cleanBody.contains(Regex("(verification code|OTP|reset password|security code)", RegexOption.IGNORE_CASE))
-        if (isOtpOrSecurity) return false
+        if (cleanBody.contains(Regex("(verification code|OTP|reset password|security code)", RegexOption.IGNORE_CASE))) {
+            return false
+        }
 
-        val isKnownBankSender = cleanSender.contains(Regex("(ADBL|CZBIL|EBL|GBIME|GLOBAL|HBL|KBL|KUMARI|LSB|LSBL|LAXMI|MBL|NABIL|NBL|NIMB|NSBL|NICA|NICASIA|NMB|PRVU|PRABHU|PCBL|PRIME|RBBL|RBB|SANIMA|SBL|SCB)")) ||
-                cleanSender.matches(Regex("^(34488|32222|37447|32425|37788|33232|2022|32022|34001|34400|31003|32244|35001|5712|36001|34343|35555|3[0-9]{4}|5[0-9]{3})$"))
+        val isTelecomMessage = cleanBody.contains(Regex("(ncell|ntc|namaste|smartcell|data usage|buy pack|voice pack|data pack|talk time|ncellapp|dial \\*)", RegexOption.IGNORE_CASE)) ||
+                cleanSender.contains(Regex("(NCELL|NTC|NAMASTE|SMARTCELL)", RegexOption.IGNORE_CASE))
+        if (isTelecomMessage) return false
 
-        val hasFinancialKeywords = cleanBody.contains(Regex("(debited|credited|transferred|withdrawn|deposited|transfer|wallet load|load|paid|payment)", RegexOption.IGNORE_CASE)) &&
-                cleanBody.contains(Regex("(A/C|Account|NPR|Rs|NRs|eSewa|Khalti)", RegexOption.IGNORE_CASE))
+        val isKnownBankSender =
+            cleanSender.contains(Regex("(ADBL|CZBIL|EBL|GBIME|GLOBAL|HBL|KBL|KUMARI|LSB|LSBL|LAXMI|MBL|NABIL|NBL|NIMB|NSBL|NICA|NICASIA|NMB|PRVU|PRABHU|PCBL|PRIME|RBBL|RBB|SANIMA|SBL|SCB)")) ||
+            cleanSender.matches(Regex("^(34488|32222|37447|32425|37788|33232|2022|32022|34001|34400|32244|35001|5712|36001|34343|35555)$"))
 
-        return isKnownBankSender || hasFinancialKeywords
+        if (!isKnownBankSender) {
+            Log.d("SmsReceiver", "Dropped SMS from $sender: not a known bank sender.")
+            return false
+        }
+
+        if (context != null) {
+            val activeShortcodes = com.example.bachatgara.utils.TrackedAccountsManager.getActiveSenderShortcodes(context)
+            if (activeShortcodes.isNotEmpty()) {
+                val senderLower = cleanSender.lowercase()
+                val matchesActiveShortcode = activeShortcodes.any { code ->
+                    senderLower.contains(code.lowercase())
+                }
+                if (!matchesActiveShortcode) {
+                    Log.d("SmsReceiver", "Dropped SMS from $sender: bank is archived / not in active accounts.")
+                    return false
+                }
+                Log.d("SmsReceiver", "Accepted bank SMS from $sender: matched active shortcode.")
+            } else {
+                Log.d("SmsReceiver", "Active shortcodes not yet cached — allowing known bank sender $sender (backend will validate).")
+            }
+        }
+
+        return true
     }
 }

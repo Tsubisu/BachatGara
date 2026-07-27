@@ -9,30 +9,31 @@ web_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+Backend/.env
+Frontend/.env
 
-# Build outputs
+# Build & coverage outputs
 dist/
 build/
 out/
+Backend/coverage/
+Backend/uploads/
+BachatGara_Android/app/build/
+BachatGara_Android/.gradle/
+BachatGara_Android/local.properties
 
-# Log files
+# Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS files
+# OS & IDE
 .DS_Store
 Thumbs.db
-
-
 Extras/
-
-# IDEs
 .idea/
 .vscode/
 *.suo
-*.ntvs*
-*.njsproj
 *.sln
 *.sw?

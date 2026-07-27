@@ -8,14 +8,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.bachatgara.network.AccountDto
 import com.example.bachatgara.network.ApiClient
 import com.example.bachatgara.network.LoginRequest
 import com.example.bachatgara.ui.theme.BachatGaraTheme
@@ -143,7 +148,7 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
             singleLine = true
         )
         Spacer(modifier = Modifier.height(12.dp))
-        
+
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -197,83 +202,176 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
 fun DashboardScreen(token: String, onRequestPermissions: () -> Unit, onLogout: () -> Unit) {
     val context = LocalContext.current
     val currentServerUrl = ServerManager.getServerUrl(context)
-    var heartbeatStatus by remember { mutableStateOf("Connecting to heartbeat...") }
+    var heartbeatStatus by remember { mutableStateOf("Connecting to observer...") }
     var isConnected by remember { mutableStateOf(true) }
+    var activeBanks by remember { mutableStateOf<List<AccountDto>>(emptyList()) }
 
-    // Heartbeat check for UI status display & ensure service is running
+    suspend fun loadAccountsOnce() {
+        try {
+            val response = ApiClient.get(context).getActiveAccounts("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                val accounts = response.body()!!
+                activeBanks = accounts
+                val bankNames = accounts.map { it.name }
+                val shortcodes = accounts.flatMap { it.senderShortcodes ?: emptyList() }
+                com.example.bachatgara.utils.AccountsObserver.notifyAccountsUpdated(context, bankNames, shortcodes)
+            }
+        } catch (e: Exception) {
+        }
+    }
+
+    val accountsListener = remember {
+        com.example.bachatgara.utils.AccountsObserver.Listener { bankNames ->
+            activeBanks = bankNames.map { name ->
+                AccountDto(id = "", name = name, account_mask = null, is_active = true)
+            }
+        }
+    }
+
+    DisposableEffect(token) {
+        com.example.bachatgara.utils.AccountsObserver.subscribe(accountsListener)
+        onDispose {
+            com.example.bachatgara.utils.AccountsObserver.unsubscribe(accountsListener)
+        }
+    }
+
     LaunchedEffect(token) {
-        com.example.bachatgara.service.SmsTrackerService.startService(context)
+        loadAccountsOnce()
+
         while (true) {
             try {
                 val response = ApiClient.get(context).heartbeat("Bearer $token")
                 if (response.isSuccessful) {
-                    heartbeatStatus = "Live Foreground Heartbeat Active"
+                    heartbeatStatus = "Observer Real-Time Listener Active"
                     isConnected = true
                 } else {
-                    heartbeatStatus = "Heartbeat Error (${response.code()})"
+                    heartbeatStatus = "Connection Status: (${response.code()})"
                     isConnected = false
                 }
             } catch (e: Exception) {
-                heartbeatStatus = "Heartbeat Offline: ${e.localizedMessage}"
+                heartbeatStatus = "Offline: ${e.localizedMessage}"
                 isConnected = false
             }
-            delay(15_000)
+            delay(30_000)
         }
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
-        Text(text = "Tracker Dashboard", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = if (isConnected) "Status: Connected & Service Active" else "Status: Disconnected",
-                    color = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Server: $currentServerUrl",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = heartbeatStatus,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Persistent Foreground Service is active. SMS tracking will continue when app is closed.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+        item {
+            Text(text = "Tracker Dashboard", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = if (isConnected) "Status: Connected & Observer Active" else "Status: Disconnected",
+                        color = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "Server: $currentServerUrl", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = heartbeatStatus, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Active Tracked Banks Section
+            Text(
+                text = "🏦 Tracked Active Banks (${activeBanks.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            )
+            Text(
+                text = "Archived bank accounts are inactive and ignored by SMS tracker.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            )
+        }
+
+        if (activeBanks.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "No active bank accounts found. Add a bank in Web Settings.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+        } else {
+            items(activeBanks) { bank ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = bank.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "SMS Mask: ${bank.account_mask ?: "N/A"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "Rs. ${(bank.balance ?: 0.0).toInt()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = onRequestPermissions,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Verify SMS & Notification Permissions")
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedButton(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Logout & Stop Background Tracker")
+            Button(
+                onClick = onRequestPermissions,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Verify SMS & Notification Permissions")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Logout & Stop Background Tracker")
+            }
         }
     }
 }

@@ -9,7 +9,6 @@ const listPlans = async (userId) => {
   const planIds = plans.map(p => p.id);
   const allAllocations = await budgetRepo.findAllocationsByPlanIds(planIds);
 
-  // Group allocations by plan_id into an object
   const allocationsByPlan = {};
   allAllocations.forEach(alloc => {
     if (!allocationsByPlan[alloc.plan_id]) allocationsByPlan[alloc.plan_id] = {};
@@ -20,7 +19,7 @@ const listPlans = async (userId) => {
 };
 
 const createPlan = async (userId, { name, start_date, end_date, total_pool, allocations }) => {
-  // Deactivate all existing plans before creating the new active one
+
   await budgetRepo.deactivateAllForUser(userId);
 
   const plan = await budgetRepo.createPlan(userId, { name, start_date, end_date, total_pool });
@@ -47,7 +46,6 @@ const rolloverPlan = async (planId, userId, { action, leftover_amount, target_pl
     if (!targetPlan) throw new AppError('Target rollover plan not found.', 404);
     await budgetRepo.incrementPlanPool(target_plan_id, userId, leftover_amount);
   }
-  // 'cash' action = no structural change, money stays in bank accounts
 
   await budgetRepo.setInactive(planId, userId);
 };

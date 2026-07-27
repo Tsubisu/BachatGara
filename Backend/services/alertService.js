@@ -3,6 +3,7 @@ const accountRepo = require('../repositories/accountRepository');
 const categoryRepo = require('../repositories/categoryRepository');
 const txRepo = require('../repositories/transactionRepository');
 const { parseSMS } = require('../utils/smsParser');
+const eventBus = require('../utils/eventBus');
 const AppError = require('../utils/AppError');
 const db = require('../db');
 
@@ -32,7 +33,8 @@ const syncAlert = async (userId, { sender, body, timestamp }) => {
   console.log(`  ► Account Mask  : ${parsed.accountMask || 'N/A'}`);
   console.log(`  ► Description   : ${parsed.description || 'N/A'}`);
 
-  const accounts = await accountRepo.findAllByUser(userId);
+  const allAccounts = await accountRepo.findAllByUser(userId);
+  const accounts = (allAccounts || []).filter(a => a.is_active !== false && a.type === 'bank');
   const accountCount = accounts ? accounts.length : 0;
   console.log(`[SMS BACKEND] 🔍 STEP 3: User Bank Account Lookup`);
   console.log(`  ► Total Configured Accounts for User ${userId}: ${accountCount}`);
@@ -93,19 +95,14 @@ const syncAlert = async (userId, { sender, body, timestamp }) => {
            accountName.includes(aliasName) || aliasName.includes(accountName);
   });
 
-  if (!matchedAccount && accounts.length === 1) {
-    matchedAccount = accounts[0];
-    console.log(`[SMS BACKEND] ℹ️ Single-Account Fallback Applied: Associated SMS with user's only account "${matchedAccount.name}".`);
-  }
-
   if (!matchedAccount) {
     console.log(`[SMS BACKEND] ⚠️ STEP 3 MATCH RESULT: NO MATCHING ACCOUNT`);
-    console.log(`  ► Reason: Parsed institution "${parsed.institution}" (mask: "${parsed.accountMask || 'N/A'}") does not match any of the ${accountCount} user account(s).`);
-    console.log(`  ► Action: Alert ignored (not queued).`);
+    console.log(`  ► Reason: Parsed institution "${parsed.institution}" (mask: "${parsed.accountMask || 'N/A'}") does not match any of the ${accountCount} active user account(s).`);
+    console.log(`  ► Action: Alert ignored — not queued. Add this bank in Account Settings if tracking is required.`);
     console.log(`${divider}\n`);
     return {
       status: 'ignored',
-      message: `Ignored SMS alert from ${parsed.institution} because this bank account is not added in your Account Settings.`,
+      message: `Ignored SMS alert from "${parsed.institution}" — this bank account is not added in your Account Settings.`,
     };
   }
 
@@ -125,6 +122,8 @@ const syncAlert = async (userId, { sender, body, timestamp }) => {
   console.log(`  ► Alert ID      : ${createdAlert.id}`);
   console.log(`  ► Status        : Pending Resolution (Unresolved)`);
   console.log(`${divider}\n`);
+
+  eventBus.emit('dataUpdated', { userId, type: 'alert', action: 'created', alert: createdAlert });
 
   return createdAlert;
 };
@@ -149,13 +148,24 @@ const resolveAlert = async (alertId, userId, { description, category_name, is_tr
   try {
     await client.query('BEGIN');
 
-    if (is_transfer && alert.type === 'debit') {
-      if (!dest_account_id) throw new AppError('Destination account is required for a transfer.', 400);
+    if (is_transfer) {
+      if (!dest_account_id) {
+        throw new AppError('The other bank account is required for an internal bank transfer.', 400);
+      }
+
+      let fromAccountId, toAccountId;
+      if (alert.type === 'debit') {
+        fromAccountId = sourceAccount.id;
+        toAccountId = dest_account_id;
+      } else {
+        fromAccountId = dest_account_id;
+        toAccountId = sourceAccount.id;
+      }
 
       await client.query(
         `INSERT INTO transactions (user_id, source_account_id, destination_account_id, amount, description, date)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, sourceAccount.id, dest_account_id, alert.amount, description, alert.timestamp]
+        [userId, fromAccountId, toAccountId, alert.amount, description, alert.timestamp]
       );
 
       if (service_fee > 0) {
@@ -163,7 +173,7 @@ const resolveAlert = async (alertId, userId, { description, category_name, is_tr
         await client.query(
           `INSERT INTO transactions (user_id, source_account_id, category_id, amount, description, date)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [userId, sourceAccount.id, feeCat?.id || null, service_fee, 'Transfer Fee', alert.timestamp]
+          [userId, fromAccountId, feeCat?.id || null, service_fee, 'Bank Transfer Charge Fee', alert.timestamp]
         );
       }
     } else {
@@ -185,6 +195,7 @@ const resolveAlert = async (alertId, userId, { description, category_name, is_tr
     await client.query('UPDATE sms_alerts SET resolved = true WHERE id = $1', [alertId]);
 
     await client.query('COMMIT');
+    eventBus.emit('dataUpdated', { userId, type: 'alert', action: 'resolved', alertId });
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -196,6 +207,7 @@ const resolveAlert = async (alertId, userId, { description, category_name, is_tr
 const discardAlert = async (alertId, userId) => {
   const deleted = await alertRepo.remove(alertId, userId);
   if (!deleted) throw new AppError('Alert not found or unauthorized.', 404);
+  eventBus.emit('dataUpdated', { userId, type: 'alert', action: 'discarded', alertId });
 };
 
 module.exports = { listAlerts, syncAlert, resolveAlert, discardAlert };

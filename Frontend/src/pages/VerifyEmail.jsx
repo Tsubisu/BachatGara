@@ -12,9 +12,8 @@ export default function VerifyEmail() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [timer, setTimer] = useState(60); // Start at 60s cooldown on mount
+  const [timer, setTimer] = useState(60);
 
-  // Set up resend cooldown timer
   useEffect(() => {
     if (timer <= 0) return;
     const intervalId = setInterval(() => {
@@ -23,7 +22,6 @@ export default function VerifyEmail() {
     return () => clearInterval(intervalId);
   }, [timer]);
 
-  // If email is not in state (e.g., direct navigation), go to login
   useEffect(() => {
     if (!email) {
       navigate('/login');
@@ -47,7 +45,7 @@ export default function VerifyEmail() {
       setUser(data.user);
       setSuccess('Account verified successfully!');
       setTimeout(() => {
-        // Force full refresh to load all data
+
         window.location.href = '/';
       }, 1500);
     } catch (err) {
@@ -65,10 +63,10 @@ export default function VerifyEmail() {
     try {
       await authApi.resendOtp(email, 'email_verification');
       setSuccess('A new verification code has been sent to your email.');
-      setTimer(60); // 1 minute cooldown
+      setTimer(60);
     } catch (err) {
       setError(err.message || 'Failed to resend code.');
-      // Extract seconds from error message if rate-limited (e.g. "Please wait 45 second(s)...")
+
       const match = err.message?.match(/wait\s+(\d+)\s+second/i);
       if (match) {
         setTimer(parseInt(match[1], 10));
@@ -88,7 +86,7 @@ export default function VerifyEmail() {
       background: 'var(--bg-primary)'
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Header */}
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
             width: '56px', height: '56px',

@@ -4,7 +4,7 @@ const auth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const v = require('../validators/alertValidators');
 
-router.use(auth); // All alert routes require authentication
+router.use(auth);
 
 router.get('/', ctrl.list);
 router.post('/sync', validate(v.sync), ctrl.sync);

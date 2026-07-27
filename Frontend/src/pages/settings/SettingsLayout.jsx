@@ -13,7 +13,7 @@ export default function SettingsLayout({ children }) {
 
   return (
     <div className="settings-layout-wrapper">
-      {/* Settings Sub-Navigation Drawer */}
+
       <aside className="glass-card settings-submenu-card">
         <h3 className="settings-submenu-title">
           Settings
@@ -35,7 +35,6 @@ export default function SettingsLayout({ children }) {
         </nav>
       </aside>
 
-      {/* Settings Active View Panel */}
       <div className="glass-card settings-view-panel animate-fade-in">
         {children}
       </div>

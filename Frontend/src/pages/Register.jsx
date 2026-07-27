@@ -42,7 +42,7 @@ export default function Register() {
       background: 'var(--bg-primary)'
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Header */}
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
             width: '56px', height: '56px',

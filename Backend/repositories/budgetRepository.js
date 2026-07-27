@@ -1,7 +1,5 @@
 const db = require('../db');
 
-// ─── Budget Plans ──────────────────────────────────────────────────────────
-
 const findPlansByUser = (userId) =>
   db.query('SELECT * FROM budget_plans WHERE user_id = $1 ORDER BY start_date DESC', [userId]).then(r => r.rows);
 
@@ -29,8 +27,6 @@ const setInactive = (planId, userId) =>
 
 const removePlan = (planId, userId) =>
   db.query('DELETE FROM budget_plans WHERE id = $1 AND user_id = $2 RETURNING id', [planId, userId]).then(r => r.rows[0]);
-
-// ─── Budget Allocations ────────────────────────────────────────────────────
 
 const findAllocationsByPlanIds = (planIds) =>
   db.query('SELECT * FROM budget_allocations WHERE plan_id = ANY($1)', [planIds]).then(r => r.rows);

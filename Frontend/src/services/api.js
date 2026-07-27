@@ -1,14 +1,6 @@
-/**
- * BachatGara Frontend API Service
- * Central file for all backend API communication.
- * Attaches the stored JWT token to every authenticated request.
- */
 
-// In dev, VITE_API_URL is not set so BASE_URL is empty — Vite's proxy forwards /api/* to the backend.
-// In production, VITE_API_URL=https://yourdomain.com is set at build time so requests go directly to the API server.
+
 const BASE_URL = import.meta.env.VITE_API_URL || '';
-
-// ─── Auth Token Helpers ────────────────────────────────────────────────────
 
 export const getToken = () => localStorage.getItem('bg_token');
 export const setToken = (token) => localStorage.setItem('bg_token', token);
@@ -19,8 +11,6 @@ export const getUser = () => {
 };
 export const setUser = (user) => localStorage.setItem('bg_user', JSON.stringify(user));
 export const clearUser = () => localStorage.removeItem('bg_user');
-
-// ─── Core Fetch Wrapper ────────────────────────────────────────────────────
 
 async function request(path, options = {}) {
   const token = getToken();
@@ -63,8 +53,6 @@ async function request(path, options = {}) {
   return data;
 }
 
-// ─── Auth ──────────────────────────────────────────────────────────────────
-
 export const authApi = {
   login: (email, password) =>
     request('/api/auth/login', {
@@ -103,8 +91,6 @@ export const authApi = {
     }),
 };
 
-// ─── Profile ───────────────────────────────────────────────────────────────
-
 export const profileApi = {
   get: () => request('/api/profile'),
   update: (data) =>
@@ -114,10 +100,9 @@ export const profileApi = {
     }),
 };
 
-// ─── Accounts ──────────────────────────────────────────────────────────────
-
 export const accountsApi = {
   list: () => request('/api/accounts'),
+  listActive: () => request('/api/accounts/active'),
   create: (data) =>
     request('/api/accounts', {
       method: 'POST',
@@ -128,11 +113,21 @@ export const accountsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  remove: (id) =>
-    request(`/api/accounts/${id}`, { method: 'DELETE' }),
+  archive: (id, targetAccountId = null) =>
+    request(`/api/accounts/${id}/archive`, {
+      method: 'POST',
+      body: JSON.stringify({ target_account_id: targetAccountId }),
+    }),
+  reactivate: (id) =>
+    request(`/api/accounts/${id}/reactivate`, {
+      method: 'POST',
+    }),
+  remove: (id, targetAccountId = null) =>
+    request(`/api/accounts/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ target_account_id: targetAccountId }),
+    }),
 };
-
-// ─── Transactions ──────────────────────────────────────────────────────────
 
 export const transactionsApi = {
   list: () => request('/api/transactions'),
@@ -143,8 +138,6 @@ export const transactionsApi = {
     }),
   remove: (id) => request(`/api/transactions/${id}`, { method: 'DELETE' }),
 };
-
-// ─── Budget Plans ──────────────────────────────────────────────────────────
 
 export const budgetsApi = {
   list: () => request('/api/budgets/plans'),
@@ -162,8 +155,6 @@ export const budgetsApi = {
     request(`/api/budgets/plans/${id}`, { method: 'DELETE' }),
 };
 
-// ─── Savings Goals ─────────────────────────────────────────────────────────
-
 export const goalsApi = {
   list: () => request('/api/goals'),
   create: (data) =>
@@ -180,8 +171,6 @@ export const goalsApi = {
     request(`/api/goals/${id}`, { method: 'DELETE' }),
 };
 
-// ─── Subscriptions ─────────────────────────────────────────────────────────
-
 export const subscriptionsApi = {
   list: () => request('/api/subscriptions'),
   create: (data) =>
@@ -192,8 +181,6 @@ export const subscriptionsApi = {
   remove: (id) =>
     request(`/api/subscriptions/${id}`, { method: 'DELETE' }),
 };
-
-// ─── SMS Alerts ────────────────────────────────────────────────────────────
 
 export const alertsApi = {
   list: () => request('/api/alerts'),
@@ -206,8 +193,6 @@ export const alertsApi = {
     request(`/api/alerts/${id}`, { method: 'DELETE' }),
 };
 
-// ─── Categories ────────────────────────────────────────────────────────────
-
 export const categoriesApi = {
   list: () => request('/api/categories'),
   upsert: (data) =>
@@ -217,11 +202,28 @@ export const categoriesApi = {
     }),
 };
 
-// ─── Gateway ───────────────────────────────────────────────────────────────
-
 export const gatewayApi = {
-  /** GET  /api/gateway/status — checks if Android app is alive */
   status: () => request('/api/gateway/status'),
-  /** POST /api/gateway/heartbeat — sent by Android app every ~30s */
   heartbeat: () => request('/api/gateway/heartbeat', { method: 'POST' }),
 };
+
+export const banksApi = {
+  list: () => request('/api/banks'),
+};
+
+export const subscribeToEvents = (onMessage) => {
+  const token = getToken();
+  if (!token) return null;
+  const url = `${BASE_URL}/api/events/stream?token=${encodeURIComponent(token)}`;
+  const eventSource = new EventSource(url);
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (onMessage) onMessage(data);
+    } catch (e) {
+      // ignore
+    }
+  };
+  return eventSource;
+};
+

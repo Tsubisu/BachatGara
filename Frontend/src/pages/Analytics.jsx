@@ -1,37 +1,33 @@
 import React, { useState } from 'react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
-  Line 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
 
 export default function Analytics({ transactions = [], budgetPlans = [], categories = [], trackedAccounts = [], netSavingsPool = 0 }) {
-  
-  // Dynamic Date Filter States
-  const [period, setPeriod] = useState('All'); // '7d', '30d', 'thisMonth', 'All', 'custom'
+
+  const [period, setPeriod] = useState('All');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  // Use actual current date so date filters work correctly for all users
   const today = new Date();
 
-  // 1. Dynamic Date Range Filter logic
   const getFilteredTransactions = () => {
     return (transactions || []).filter(t => {
       const txDate = new Date(t.date);
       if (isNaN(txDate.getTime())) return true;
 
-      // Ensure clean date comparison (ignoring time component)
       const cleanTxDate = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate());
       const cleanToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -46,7 +42,7 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
         return diffDays >= 0 && diffDays <= 30;
       }
       if (period === 'thisMonth') {
-        return cleanTxDate.getFullYear() === cleanToday.getFullYear() && 
+        return cleanTxDate.getFullYear() === cleanToday.getFullYear() &&
                cleanTxDate.getMonth() === cleanToday.getMonth();
       }
       if (period === 'custom') {
@@ -63,18 +59,17 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
         }
         return match;
       }
-      return true; // 'All'
+      return true;
     });
   };
 
   const filteredTx = getFilteredTransactions();
 
-  // Helper to calculate active calendar days in selected period
   const getDaysCount = () => {
     if (period === '7d') return 7;
     if (period === '30d') return 30;
     if (period === 'thisMonth') {
-      return today.getDate(); // Days elapsed in this month
+      return today.getDate();
     }
     if (period === 'custom') {
       if (customStart && customEnd) {
@@ -82,8 +77,7 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
         return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1);
       }
     }
-    
-    // Default/All time: days between first and last transactions
+
     if (filteredTx.length <= 1) return 1;
     const dates = filteredTx.map(t => new Date(t.date).getTime());
     const min = Math.min(...dates);
@@ -94,23 +88,16 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
 
   const activeDays = getDaysCount();
 
-  // 2. Calculate New & Extended Analytic Measures
   const totalInflow = filteredTx.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const totalOutflow = filteredTx.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const periodNetSavings = totalInflow - totalOutflow;
-  
-  // Measure A: Savings Rate %
+
   const savingsRate = totalInflow > 0 ? Math.round((periodNetSavings / totalInflow) * 100) : 0;
 
-  // Measure B: Average Daily Spending
   const avgDailySpending = Math.round(totalOutflow / activeDays);
 
-  // Measure C: Expense-to-Income Ratio
   const expenseToIncomeRatio = totalInflow > 0 ? Math.round((totalOutflow / totalInflow) * 100) : 0;
 
-  // 3. Prep Chart Datasets on the filtered transactions
-
-  // A) Cash Flow Chart Data
   const dailyDataMap = {};
   filteredTx.forEach(t => {
     const dateStr = t.date;
@@ -126,7 +113,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
   const cashFlowData = Object.values(dailyDataMap)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // B) Spending Breakdown (Pie)
   const expenseBreakdown = {};
   filteredTx.filter(t => t.type === 'expense').forEach(t => {
     if (!expenseBreakdown[t.category]) {
@@ -143,11 +129,10 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
     };
   });
 
-  // C) Budget vs Actual (Based on active budget plan allocations and transactions inside plan range)
   const activePlan = budgetPlans.find(p => p.active);
-  const budgetVsActualData = activePlan 
+  const budgetVsActualData = activePlan
     ? Object.entries(activePlan.allocations).map(([category, limit]) => {
-        // Calculate actual spent strictly within plan dates
+
         const start = new Date(activePlan.startDate);
         const end = new Date(activePlan.endDate);
         const planTx = transactions.filter(t => {
@@ -166,7 +151,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
       })
     : [];
 
-  // D) Trends (Running Ledger Balance on filtered items)
   const sortedTx = [...filteredTx].sort((a, b) => new Date(a.date) - new Date(b.date));
   let runningBalance = 0;
   const trendData = sortedTx.map(t => {
@@ -189,10 +173,32 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
     "Net Value": val
   })).sort((a, b) => new Date(a.date) - new Date(b.date));
 
+  // 1. Money Distribution Across Sources Dataset
+  const activeTrackedAccounts = (trackedAccounts || []).filter(a => a.isActive !== false);
+  const paletteColors = ['#10b981', '#3b82f6', '#f97316', '#ec4899', '#8b5cf6', '#06b6d4', '#eab308'];
+  const moneyDistributionData = activeTrackedAccounts.map((acc, idx) => ({
+    name: acc.bankName || 'Bank',
+    value: acc.balance,
+    color: paletteColors[idx % paletteColors.length]
+  })).filter(d => d.value > 0);
+
+  // 2. Outflow Volume by Sources Dataset
+  const outflowSourceMap = {};
+  filteredTx.filter(t => t.type === 'expense').forEach(t => {
+    const srcName = t.account || t.source_account_name || 'Cash / Default';
+    if (!outflowSourceMap[srcName]) {
+      outflowSourceMap[srcName] = 0;
+    }
+    outflowSourceMap[srcName] += t.amount;
+  });
+  const outflowBySourceData = Object.entries(outflowSourceMap).map(([name, amount]) => ({
+    name,
+    Outflow: amount
+  })).sort((a, b) => b.Outflow - a.Outflow);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Page Title & Interactive Period Filter Controls */}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontWeight: '800', fontSize: '24px', color: 'var(--text-primary)' }}>📊 Financial Insights &amp; Analytics</h2>
@@ -200,13 +206,12 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
             Interactive reporting charts dynamically filtered by your chosen calendar cycle.
           </p>
         </div>
-        
-        {/* Dynamic Period Selector Control */}
+
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-secondary)', padding: '12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-premium)' }}>
           <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)' }}>Period:</span>
-          <select 
-            value={period} 
-            onChange={e => setPeriod(e.target.value)} 
+          <select
+            value={period}
+            onChange={e => setPeriod(e.target.value)}
             style={{ width: '130px', padding: '6px 10px', fontSize: '13px' }}
           >
             <option value="All">All Time</option>
@@ -215,21 +220,21 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
             <option value="thisMonth">This Month</option>
             <option value="custom">Custom Range</option>
           </select>
-          
+
           {period === 'custom' && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
-              <input 
-                type="date" 
-                value={customStart} 
-                onChange={e => setCustomStart(e.target.value)} 
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
                 style={{ width: '130px', padding: '6px 8px', fontSize: '12px' }}
                 title="Start Date"
               />
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>to</span>
-              <input 
-                type="date" 
-                value={customEnd} 
-                onChange={e => setCustomEnd(e.target.value)} 
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
                 style={{ width: '130px', padding: '6px 8px', fontSize: '12px' }}
                 title="End Date"
               />
@@ -238,10 +243,8 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
         </div>
       </div>
 
-      {/* Dynamic Key Analytics Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-        
-        {/* Card 1: Total Period Savings */}
+
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--color-primary)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Period Savings</span>
           <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px', color: periodNetSavings < 0 ? 'var(--color-danger)' : 'var(--text-primary)' }}>
@@ -250,7 +253,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Net earnings minus outflows</span>
         </div>
 
-        {/* Card 2: Savings Rate */}
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--color-secondary)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Savings Rate</span>
           <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px', color: savingsRate < 0 ? 'var(--color-danger)' : 'var(--color-primary)' }}>
@@ -259,7 +261,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Percentage of income saved</span>
         </div>
 
-        {/* Card 3: Average Daily Spending */}
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--color-tertiary)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Avg Daily Spending</span>
           <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>
@@ -268,7 +269,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Across {activeDays} active days</span>
         </div>
 
-        {/* Card 4: Expense-to-Income Ratio */}
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--color-danger)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Expense Ratio</span>
           <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px', color: expenseToIncomeRatio > 100 ? 'var(--color-danger)' : 'var(--text-primary)' }}>
@@ -277,7 +277,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Spent out of total income</span>
         </div>
 
-        {/* Card 5: Net Savings Pool */}
         <div className="glass-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--color-secondary)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Net Savings Pool</span>
           <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px', color: 'var(--color-primary)' }}>
@@ -288,10 +287,8 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
 
       </div>
 
-      {/* Grid containing Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '24px' }}>
-        
-        {/* Cash Flow Chart */}
+
         <div className="glass-card">
           <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>💵 Cash Flow (Inflow vs Outflow)</h3>
           <div style={{ width: '100%', height: '300px' }}>
@@ -305,7 +302,7 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
                   <CartesianGrid strokeDasharray="0" stroke="var(--border-color)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
                   <YAxis stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
                   />
                   <Legend tick={{ fontSize: '12px' }} />
@@ -317,7 +314,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           </div>
         </div>
 
-        {/* Spending Breakdown (Pie Chart) */}
         <div className="glass-card">
           <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>🍔 Spending Breakdown (Category Distribution)</h3>
           <div style={{ width: '100%', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -340,7 +336,7 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => `Rs. ${value.toLocaleString()}`}
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
                   />
@@ -350,7 +346,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           </div>
         </div>
 
-        {/* Budget vs Actual */}
         <div className="glass-card">
           <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>🎯 Target Limit vs Actual Spend (For Active Plan)</h3>
           <div style={{ width: '100%', height: '300px' }}>
@@ -360,7 +355,7 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
                   <CartesianGrid strokeDasharray="0" stroke="var(--border-color)" horizontal={false} />
                   <XAxis type="number" stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
                   <YAxis dataKey="name" type="category" stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} width={100} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => `Rs. ${value.toLocaleString()}`}
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
                   />
@@ -377,7 +372,6 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           </div>
         </div>
 
-        {/* Financial Trends Line */}
         <div className="glass-card">
           <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>📈 Net Asset Trend Line (Running Ledger Balance)</h3>
           <div style={{ width: '100%', height: '300px' }}>
@@ -391,18 +385,18 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
                   <CartesianGrid strokeDasharray="0" stroke="var(--border-color)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
                   <YAxis stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value) => `Rs. ${value.toLocaleString()}`}
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
                   />
                   <Legend tick={{ fontSize: '12px' }} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="Net Value" 
-                    stroke="var(--color-primary)" 
-                    strokeWidth={3} 
-                    dot={{ r: 4, strokeWidth: 1 }} 
-                    activeDot={{ r: 6 }} 
+                  <Line
+                    type="monotone"
+                    dataKey="Net Value"
+                    stroke="var(--color-primary)"
+                    strokeWidth={3}
+                    dot={{ r: 4, strokeWidth: 1 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -410,9 +404,67 @@ export default function Analytics({ transactions = [], budgetPlans = [], categor
           </div>
         </div>
 
+        {/* 1. Money Distribution Across Sources */}
+        <div className="glass-card">
+          <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>🏛 Money Distribution Across Sources</h3>
+          <div style={{ width: '100%', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {moneyDistributionData.length === 0 ? (
+              <span style={{ color: 'var(--text-secondary)' }}>No active tracked balances to display.</span>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={moneyDistributionData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={false}
+                  >
+                    {moneyDistributionData.map((entry, index) => (
+                      <Cell key={`cell-dist-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => `Rs. ${value.toLocaleString()}`}
+                    contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* 2. Outflow Volume by Sources */}
+        <div className="glass-card">
+          <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>💸 Outflow Volume by Sources</h3>
+          <div style={{ width: '100%', height: '300px' }}>
+            {outflowBySourceData.length === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                No outflow transactions in this period.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={outflowBySourceData}>
+                  <CartesianGrid strokeDasharray="0" stroke="var(--border-color)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
+                  <YAxis stroke="var(--text-secondary)" tick={{ fontSize: '11px' }} />
+                  <Tooltip
+                    formatter={(value) => `Rs. ${value.toLocaleString()}`}
+                    contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }}
+                  />
+                  <Legend tick={{ fontSize: '12px' }} />
+                  <Bar dataKey="Outflow" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
       </div>
 
-      {/* Bank Account Balances Breakdown */}
       {trackedAccounts.length > 0 && (
         <div className="glass-card">
           <h3 style={{ marginBottom: '16px', fontWeight: '700', fontSize: '15px' }}>🏦 Bank Account Balances</h3>

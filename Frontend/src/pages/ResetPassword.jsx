@@ -18,7 +18,6 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Redirect back to forgot-password if state is missing
   useEffect(() => {
     if (!email || !code) {
       navigate('/forgot-password');
@@ -58,7 +57,7 @@ export default function ResetPassword() {
       background: 'var(--bg-primary)'
     }}>
       <div style={{ width: '100%', maxWidth: '420px' }}>
-        {/* Header */}
+
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{
             width: '56px', height: '56px',

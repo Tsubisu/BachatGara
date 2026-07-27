@@ -4,7 +4,7 @@ const auth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const v = require('../validators/goalValidators');
 
-router.use(auth); // All goal routes require authentication
+router.use(auth);
 
 router.get('/', ctrl.list);
 router.post('/', validate(v.createGoal), ctrl.create);

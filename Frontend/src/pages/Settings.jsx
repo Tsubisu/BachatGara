@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Landmark, Trash2, PlusCircle, Check, LogOut } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
+import { Landmark, Trash2, PlusCircle, Check, LogOut, Smile } from 'lucide-react';
 import { accountsApi } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
-export default function Settings({ 
-  colorTheme, 
-  setColorTheme, 
-  categories, 
+export default function Settings({
+  colorTheme,
+  setColorTheme,
+  categories,
   setCategories,
   trackedAccounts = [],
   setTrackedAccounts,
@@ -13,11 +15,13 @@ export default function Settings({
   onLogout,
   user
 }) {
+  const { showConfirm, showAlert } = useDialog();
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('📁');
   const [newCatColor, setNewCatColor] = useState('#10b981');
+  const [showNewPicker, setShowNewPicker] = useState(false);
+  const [activeEditingCat, setActiveEditingCat] = useState(null);
 
-  // New Bank Account Form states
   const [bankName, setBankName] = useState('');
   const [accountMask, setAccountMask] = useState('');
   const [bankBalance, setBankBalance] = useState('');
@@ -30,12 +34,12 @@ export default function Settings({
     { id: 'slate', label: 'Minimalist Slate', color: '#64748b' }
   ];
 
-  const handleAddCategory = (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    
+
     if (categories.some(c => c.name.toLowerCase() === newCatName.trim().toLowerCase())) {
-      alert('Category already exists!');
+      await showAlert('Category with this name already exists.', { type: 'warning', title: 'Duplicate Category' });
       return;
     }
 
@@ -49,6 +53,7 @@ export default function Settings({
     setNewCatName('');
     setNewCatIcon('📁');
     setNewCatColor('#10b981');
+    setShowNewPicker(false);
   };
 
   const [accError, setAccError] = useState('');
@@ -74,19 +79,22 @@ export default function Settings({
   };
 
   const handleDeleteAccount = async (id) => {
-    if (!confirm('Stop tracking this bank account? Historical transaction links will remain.')) return;
+    const confirmed = await showConfirm(
+      'Stop tracking this bank account? Historical transaction links will remain.',
+      { title: 'Remove Bank Account', type: 'error', confirmLabel: 'Remove Account', cancelLabel: 'Cancel' }
+    );
+    if (!confirmed) return;
     try {
       await accountsApi.remove(id);
       if (onDataRefresh) await onDataRefresh();
     } catch (err) {
-      alert(`Delete failed: ${err.message}`);
+      await showAlert(`Delete failed: ${err.message}`, { type: 'error', title: 'Error' });
     }
   };
 
   return (
     <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      
-      {/* 👤 Account Info */}
+
       {user && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'var(--bg-secondary)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
           <div>
@@ -101,7 +109,6 @@ export default function Settings({
         </div>
       )}
 
-      {/* ⚙️ Theme Selection */}
       <div>
         <h2 style={{ fontWeight: '700', fontSize: '20px', marginBottom: '6px' }}>⚙️ Personalization &amp; Themes</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
@@ -112,7 +119,7 @@ export default function Settings({
           <div className="theme-palette-grid">
             {swatches.map(s => (
               <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <div 
+                <div
                   className={`theme-swatch ${colorTheme === s.id ? 'active' : ''}`}
                   style={{ backgroundColor: s.color }}
                   onClick={() => setColorTheme(s.id)}
@@ -137,12 +144,12 @@ export default function Settings({
         {/* Bank List Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
           {trackedAccounts.map(acc => (
-            <div 
-              key={acc.id} 
-              style={{ 
-                padding: '16px', 
-                background: 'var(--bg-primary)', 
-                border: '1px solid var(--border-color)', 
+            <div
+              key={acc.id}
+              style={{
+                padding: '16px',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
                 borderRadius: 'var(--border-radius-sm)',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -158,8 +165,8 @@ export default function Settings({
                   Rs. {acc.balance.toLocaleString()}
                 </span>
               </div>
-              <button 
-                onClick={() => handleDeleteAccount(acc.id)} 
+              <button
+                onClick={() => handleDeleteAccount(acc.id)}
                 style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '6px', borderRadius: '4px' }}
                 title="Remove account"
               >
@@ -178,9 +185,9 @@ export default function Settings({
           <form onSubmit={handleAddAccount} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'flex-end' }}>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Bank Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g. NMB Bank" 
+              <input
+                type="text"
+                placeholder="e.g. NMB Bank"
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 required
@@ -188,9 +195,9 @@ export default function Settings({
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>SMS Account Mask (As in SMS)</label>
-              <input 
-                type="text" 
-                placeholder="e.g. 0#15 or *1234" 
+              <input
+                type="text"
+                placeholder="e.g. 0#15 or *1234"
                 value={accountMask}
                 onChange={e => setAccountMask(e.target.value)}
                 required
@@ -198,9 +205,9 @@ export default function Settings({
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Starting Balance (Rs.)</label>
-              <input 
-                type="number" 
-                placeholder="e.g. 35000" 
+              <input
+                type="number"
+                placeholder="e.g. 35000"
                 value={bankBalance}
                 onChange={e => setBankBalance(e.target.value)}
                 required
@@ -220,66 +227,140 @@ export default function Settings({
       <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
         <h4 style={{ fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', marginBottom: '4px' }}>📁 Dynamic Category Customizer</h4>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>
-          Change the color or emoji icon for existing categories, or add your own custom categories.
+          Change the color or emoji icon for existing categories, or add your own custom categories using the interactive emoji picker.
         </p>
 
         {/* Existing Categories Editor */}
         <div className="category-customizer-grid">
           {categories.map(cat => (
-            <div key={cat.name} className="category-edit-card">
+            <div key={cat.name} className="category-edit-card" style={{ position: 'relative' }}>
               <div className="category-edit-info">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="category-icon-picker"
-                  onClick={() => {
-                    const newIcon = prompt(`Enter a new emoji icon for "${cat.name}":`, cat.icon);
-                    if (newIcon !== null) {
-                      setCategories(categories.map(c => c.name === cat.name ? { ...c, icon: newIcon || '📁' } : c));
-                    }
-                  }}
+                  onClick={() => setActiveEditingCat(activeEditingCat === cat.name ? null : cat.name)}
                   title="Click to edit emoji"
                 >
                   {cat.icon}
                 </button>
                 <span style={{ fontSize: '14px', fontWeight: '600' }}>{cat.name}</span>
               </div>
-              <input 
-                type="color" 
-                value={cat.color} 
+              <input
+                type="color"
+                value={cat.color}
                 className="category-color-picker"
                 onChange={e => {
                   setCategories(categories.map(c => c.name === cat.name ? { ...c, color: e.target.value } : c));
                 }}
                 title="Choose category color"
               />
+
+              {activeEditingCat === cat.name && (
+                <div style={{
+                  position: 'fixed', inset: 0, zIndex: 99999,
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+                }}>
+                  <div style={{
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                    borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                    display: 'flex', flexDirection: 'column'
+                  }} className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: 'var(--bg-accent)', borderBottom: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>Select Emoji for "{cat.name}"</span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveEditingCat(null)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '16px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        setCategories(categories.map(c => c.name === cat.name ? { ...c, icon: emojiData.emoji } : c));
+                        setActiveEditingCat(null);
+                      }}
+                      width={320}
+                      height={380}
+                      theme={document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Add Custom Category Form */}
-        <div style={{ marginTop: '24px', background: 'var(--bg-primary)', padding: '16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
+        <div style={{ marginTop: '24px', background: 'var(--bg-primary)', padding: '16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', position: 'relative' }}>
           <h5 style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '10px' }}>🆕 Add Custom Category</h5>
           <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input 
-              type="text" 
-              placeholder="Category Name" 
+            <input
+              type="text"
+              placeholder="Category Name"
               value={newCatName}
               onChange={e => setNewCatName(e.target.value)}
               style={{ flex: 2, padding: '8px 12px', fontSize: '13px' }}
               required
             />
-            <input 
-              type="text" 
-              placeholder="Emoji" 
-              value={newCatIcon}
-              onChange={e => setNewCatIcon(e.target.value)}
-              style={{ width: '80px', padding: '8px 12px', fontSize: '13px', textAlign: 'center' }}
-            />
+            
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowNewPicker(!showNewPicker)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 12px', background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)',
+                  color: 'var(--text-primary)', cursor: 'pointer', fontSize: '15px'
+                }}
+                title="Select Emoji"
+              >
+                <span>{newCatIcon}</span>
+                <Smile size={16} color="var(--text-muted)" />
+              </button>
+
+              {showNewPicker && (
+                <div style={{
+                  position: 'fixed', inset: 0, zIndex: 99999,
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+                }}>
+                  <div style={{
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+                    borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                    display: 'flex', flexDirection: 'column'
+                  }} className="animate-fade-in">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: 'var(--bg-accent)', borderBottom: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>Select Emoji Icon</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPicker(false)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 'bold', fontSize: '16px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        setNewCatIcon(emojiData.emoji);
+                        setShowNewPicker(false);
+                      }}
+                      width={320}
+                      height={380}
+                      theme={document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600' }}>Color:</span>
-              <input 
-                type="color" 
-                value={newCatColor} 
+              <input
+                type="color"
+                value={newCatColor}
                 onChange={e => setNewCatColor(e.target.value)}
                 style={{ width: '40px', height: '36px', padding: '0', border: 'none', background: 'none', cursor: 'pointer' }}
               />

@@ -4,10 +4,10 @@ import NavigationDrawer from './NavigationDrawer';
 export default function PageWrapper({ children, theme, toggleTheme, balance, sidebarCollapsed, setSidebarCollapsed, onLogout, user }) {
   return (
     <div className={`layout-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <NavigationDrawer 
-        theme={theme} 
-        toggleTheme={toggleTheme} 
-        balance={balance} 
+      <NavigationDrawer
+        theme={theme}
+        toggleTheme={toggleTheme}
+        balance={balance}
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         onLogout={onLogout}

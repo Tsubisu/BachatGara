@@ -6,17 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="BachatGara is a comprehensive personal financial management system tailored for cash and digital tracking, monthly budgeting, savings goals, and reports." />
     <title>BachatGara - Personal Finance Manager</title>
-    <!-- Premium Google Fonts: Quicksand (Spendee Style) -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!--
-      Theme Anti-Flash Script — runs synchronously before React mounts.
-      Reads saved theme prefs from localStorage and applies data attributes
-      to <html> immediately so the browser paints with the correct theme on
-      the very first frame. Without this, React's useEffect fires too late
-      and the default (mint/light) theme flickers for ~50-200ms on reload.
-    -->
+
     <script>
       (function () {
         try {
@@ -25,7 +19,7 @@
           document.documentElement.setAttribute('data-theme',       theme);
           document.documentElement.setAttribute('data-color-theme', colorTheme);
         } catch (e) {
-          // localStorage may be unavailable in private/restricted contexts — fail silently
+
         }
       })();
     </script>

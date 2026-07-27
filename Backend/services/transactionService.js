@@ -6,14 +6,13 @@ const AppError = require('../utils/AppError');
 const listTransactions = (userId) => txRepo.findAllByUser(userId);
 
 const addManualTransaction = async (userId, { description, amount, type, category_name, account_name, date }) => {
-  // 1. Resolve category (optional)
+
   let categoryId = null;
   if (category_name) {
     const cat = await categoryRepo.findByName(category_name, userId);
     if (cat) categoryId = cat.id;
   }
 
-  // 2. Resolve account (optional for pure cash entries)
   let accountId = null;
   if (account_name) {
     const accounts = await accountRepo.findAllByUser(userId);
@@ -24,7 +23,6 @@ const addManualTransaction = async (userId, { description, amount, type, categor
 
   const txDate = date || new Date().toISOString().split('T')[0];
 
-  // 3. Create ledger entry
   if (type === 'expense') {
     return txRepo.createExpense(userId, accountId, categoryId, amount, description, txDate);
   } else {

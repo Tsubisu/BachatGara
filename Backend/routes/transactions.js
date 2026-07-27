@@ -4,7 +4,7 @@ const auth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const v = require('../validators/transactionValidators');
 
-router.use(auth); // All transaction routes require authentication
+router.use(auth);
 
 router.get('/', ctrl.list);
 router.post('/manual', validate(v.addManual), ctrl.addManual);

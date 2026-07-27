@@ -11,7 +11,7 @@ const findById = (id, userId) =>
 
 const create = (userId, { timestamp, sender, raw_body, bank_name, amount, type }) =>
   db.query(
-    `INSERT INTO sms_alerts (user_id, timestamp, sender, raw_body, bank_name, amount, type) 
+    `INSERT INTO sms_alerts (user_id, timestamp, sender, raw_body, bank_name, amount, type)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [userId, timestamp || new Date(), sender, raw_body, bank_name, amount, type]
   ).then(r => r.rows[0]);

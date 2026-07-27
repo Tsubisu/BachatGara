@@ -1,24 +1,24 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ReceiptText, 
-  BarChart3, 
-  Target, 
-  PiggyBank, 
-  Calendar, 
-  Settings as SettingsIcon, 
-  LogOut, 
-  ChevronLeft, 
-  ChevronRight, 
-  Sun, 
-  Moon 
+import {
+  LayoutDashboard,
+  ReceiptText,
+  BarChart3,
+  Target,
+  PiggyBank,
+  Calendar,
+  Settings as SettingsIcon,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function NavigationDrawer({ theme, toggleTheme, balance = 0, sidebarCollapsed, setSidebarCollapsed, onLogout, user }) {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const displayName = user?.profile_name || user?.name || 'User';
   const displayEmail = user?.email || '';
   const initials = displayName
@@ -41,8 +41,8 @@ export default function NavigationDrawer({ theme, toggleTheme, balance = 0, side
 
   return (
     <aside className={`drawer-aside ${sidebarCollapsed ? 'collapsed' : ''}`}>
-      <button 
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      <button
+        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         className="drawer-toggle-btn"
         title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
       >
@@ -50,7 +50,13 @@ export default function NavigationDrawer({ theme, toggleTheme, balance = 0, side
       </button>
 
       <div className="drawer-profile">
-        <div className="avatar-circle">{initials}</div>
+        <div className="avatar-circle" style={{ overflow: 'hidden' }}>
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            initials
+          )}
+        </div>
         {!sidebarCollapsed && (
           <>
             <h2 className="profile-name">{displayName}</h2>
@@ -64,8 +70,8 @@ export default function NavigationDrawer({ theme, toggleTheme, balance = 0, side
 
       <ul className="drawer-menu">
         {navItems.map(item => {
-          const isActive = item.path === '/' 
-            ? location.pathname === '/' 
+          const isActive = item.path === '/'
+            ? location.pathname === '/'
             : location.pathname.startsWith(item.path);
           const Icon = item.icon;
           return (
@@ -82,14 +88,14 @@ export default function NavigationDrawer({ theme, toggleTheme, balance = 0, side
       <div className="drawer-footer">
         <div style={{ display: 'flex', justifyContent: sidebarCollapsed ? 'center' : 'space-between', alignItems: 'center' }}>
           {!sidebarCollapsed && <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Dark Mode</span>}
-          <button 
-            onClick={toggleTheme} 
-            style={{ 
-              background: 'var(--bg-accent)', 
-              border: '1px solid var(--border-color)', 
-              borderRadius: '50%', 
-              width: '36px', 
-              height: '36px', 
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: 'var(--bg-accent)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
               cursor: 'pointer',
               color: 'var(--text-primary)',
               display: 'flex',
@@ -102,9 +108,9 @@ export default function NavigationDrawer({ theme, toggleTheme, balance = 0, side
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
-        <button 
-          onClick={onLogout} 
-          className="btn-primary" 
+        <button
+          onClick={onLogout}
+          className="btn-primary"
           style={{ width: '100%', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', cursor: 'pointer' }}
         >
           <LogOut size={16} />

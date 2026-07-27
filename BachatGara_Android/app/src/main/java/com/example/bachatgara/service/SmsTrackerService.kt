@@ -10,6 +10,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.bachatgara.network.ApiClient
+import com.example.bachatgara.network.SseManager
 import com.example.bachatgara.network.SyncAlertRequest
 import com.example.bachatgara.utils.NotificationHelper
 import com.example.bachatgara.utils.OfflineSmsStorage
@@ -40,6 +41,7 @@ class SmsTrackerService : Service() {
         }
 
         startForegroundServiceNotification()
+        SseManager.start(applicationContext, serviceScope)
         startHeartbeatAndQueueSyncLoop()
 
         return START_STICKY
@@ -59,15 +61,18 @@ class SmsTrackerService : Service() {
         startForeground(NOTIFICATION_ID, notification)
     }
 
+    private var heartbeatJob: Job? = null
+
     private fun startHeartbeatAndQueueSyncLoop() {
-        serviceScope.launch {
+        heartbeatJob?.cancel()
+        heartbeatJob = serviceScope.launch {
             while (isActive) {
                 val token = TokenManager.getToken(applicationContext)
                 if (token != null) {
                     try {
                         val response = ApiClient.get(applicationContext).heartbeat("Bearer $token")
                         if (response.isSuccessful) {
-                            Log.d(TAG, "Background Heartbeat successful")
+                            Log.d(TAG, "Background Heartbeat OK — draining offline SMS queue.")
                             syncOfflineSmsQueue(token)
                         } else {
                             Log.w(TAG, "Background Heartbeat status: ${response.code()}")
@@ -76,7 +81,7 @@ class SmsTrackerService : Service() {
                         Log.e(TAG, "Background Heartbeat error: ${e.localizedMessage}")
                     }
                 } else {
-                    Log.w(TAG, "No auth token found in background service. Stopping service.")
+                    Log.w(TAG, "No auth token found. Stopping background service.")
                     stopSelf()
                     break
                 }
@@ -106,10 +111,10 @@ class SmsTrackerService : Service() {
                         "Queued bank SMS from ${pending.sender} successfully uploaded to backend."
                     )
                 } else {
-                    Log.w(TAG, "Offline alert ID ${pending.id} failed with status ${response.code()}. Keeping in offline queue.")
+                    Log.w(TAG, "Offline alert ID ${pending.id} failed with status ${response.code()}. Keeping in queue.")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error syncing offline alert ID ${pending.id}: ${e.localizedMessage}. Keeping in offline queue.")
+                Log.e(TAG, "Error syncing offline alert ID ${pending.id}: ${e.localizedMessage}. Keeping in queue.")
                 break
             }
         }
@@ -131,6 +136,7 @@ class SmsTrackerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        SseManager.stop()
         serviceJob.cancel()
         Log.d(TAG, "SmsTrackerService destroyed")
     }

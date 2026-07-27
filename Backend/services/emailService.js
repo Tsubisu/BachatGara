@@ -22,13 +22,6 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASSWORD) {
   console.warn('WARNING: SMTP configuration is missing. Nodemailer will fall back to logging emails to the console.');
 }
 
-/**
- * Sends an email
- * @param {string} to recipient email
- * @param {string} subject email subject
- * @param {string} html email body in HTML format
- * @param {string} text email body in plain text format
- */
 const sendEmail = async ({ to, subject, html, text }) => {
   if (transporter) {
     try {
@@ -37,7 +30,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
         to,
         subject,
         html,
-        text: text || html.replace(/<[^>]*>/g, ''), // Fallback simple text parser
+        text: text || html.replace(/<[^>]*>/g, ''),
       });
       console.log(`Email successfully sent to ${to}.`);
     } catch (err) {
@@ -45,7 +38,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
       throw err;
     }
   } else {
-    // Development fallback console log
+
     console.log('\n==================================================');
     console.log(`[SIMULATED EMAIL SENT]`);
     console.log(`To:      ${to}`);

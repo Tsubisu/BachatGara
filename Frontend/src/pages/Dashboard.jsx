@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Calendar as CalendarIcon, ArrowRight, Bell, AlertTriangle, ShieldCheck, Wallet, Sparkles, X, Check } from 'lucide-react';
+import { Target, Calendar as CalendarIcon, ArrowRight, Bell, AlertTriangle, ShieldCheck, Wallet, Sparkles, X, Check, Trash2 } from 'lucide-react';
 import { transactionsApi, alertsApi, budgetsApi } from '../services/api';
+import { useDialog } from '../context/DialogContext';
+import CustomDropdown from '../components/CustomDropdown';
 
-export default function Dashboard({ 
+export default function Dashboard({
   user,
-  transactions, 
+  transactions,
   setTransactions,
-  budgetPlans, 
+  budgetPlans,
   setBudgetPlans,
-  balance, 
+  balance,
   categories,
   trackedAccounts = [],
   setTrackedAccounts,
@@ -60,8 +62,26 @@ export default function Dashboard({
     }
   };
 
+  const { showConfirm, showAlert } = useDialog();
+
   const [resolveError, setResolveError] = useState('');
   const [resolveLoading, setResolveLoading] = useState(false);
+
+  const handleDiscardAlert = async (alertId) => {
+    const confirmed = await showConfirm(
+      'Discard this parsed SMS alert from queue inbox?',
+      { title: 'Discard Alert', confirmLabel: 'Discard Alert' }
+    );
+    if (!confirmed) return;
+    try {
+      await alertsApi.discard(alertId);
+      setUnresolvedAlerts(prev => prev.filter(a => a.id !== alertId));
+      if (resolvingAlert?.id === alertId) setResolvingAlert(null);
+      if (onDataRefresh) await onDataRefresh();
+    } catch (err) {
+      await showAlert(`Failed to discard alert: ${err.message}`, { type: 'error', title: 'Error' });
+    }
+  };
 
   const handleResolveAlert = async (e) => {
     e.preventDefault();
@@ -95,13 +115,16 @@ export default function Dashboard({
 
   const openResolveModal = (alertItem) => {
     setResolvingAlert(alertItem);
-    const datePart = alertItem.timestamp.split(' ')[0];
+    const datePart = alertItem.timestamp ? alertItem.timestamp.split(' ')[0] : '';
     setResDesc(`${alertItem.bankName} ${alertItem.type === 'debit' ? 'Expense' : 'Income'} (${datePart})`);
-    
-    if (alertItem.amount === 5000) {
-      setIsTransfer(true);
-      const otherAcc = trackedAccounts.find(a => a.bankName !== alertItem.bankName);
-      if (otherAcc) setDestAccountId(otherAcc.id);
+    setIsTransfer(false);
+    setServiceFee('0');
+
+    const otherAcc = trackedAccounts.find(a => a.isActive !== false && a.bankName !== alertItem.bankName);
+    if (otherAcc) {
+      setDestAccountId(otherAcc.id);
+    } else {
+      setDestAccountId('');
     }
   };
 
@@ -167,7 +190,7 @@ export default function Dashboard({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
-      
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.25rem' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.75px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -206,12 +229,12 @@ export default function Dashboard({
                 <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Unspent Pool Leftover: <strong style={{ color: 'var(--color-primary)' }}>Rs. {leftover.toLocaleString()}</strong>
                 </span>
-                
+
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
                   <label style={{ fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <input 
-                      type="radio" 
-                      name="rolloverOption" 
+                    <input
+                      type="radio"
+                      name="rolloverOption"
                       value="savings"
                       checked={rolloverChoice === 'savings'}
                       onChange={() => setRolloverChoice('savings')}
@@ -219,9 +242,9 @@ export default function Dashboard({
                     Save to Emergency Savings
                   </label>
                   <label style={{ fontSize: '12px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <input 
-                      type="radio" 
-                      name="rolloverOption" 
+                    <input
+                      type="radio"
+                      name="rolloverOption"
                       value="cash"
                       checked={rolloverChoice === 'cash'}
                       onChange={() => setRolloverChoice('cash')}
@@ -230,9 +253,9 @@ export default function Dashboard({
                   </label>
                 </div>
 
-                <button 
-                  onClick={handleRolloverResolve} 
-                  className="btn-primary" 
+                <button
+                  onClick={handleRolloverResolve}
+                  className="btn-primary"
                   style={{ marginTop: '14px', padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Check size={14} />
@@ -279,7 +302,7 @@ export default function Dashboard({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        
+
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <h3 style={{ fontWeight: '700', fontSize: '1.0625rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Bell size={18} className="md-tertiary" />
@@ -304,12 +327,12 @@ export default function Dashboard({
               activeAlerts.map(alert => {
                 const isExpense = alert.type === 'debit' || alert.type === 'expense';
                 return (
-                  <div 
-                    key={alert.id} 
-                    style={{ 
-                      padding: '12px', 
-                      background: 'var(--bg-primary)', 
-                      border: `1px solid ${isExpense ? '#ef444440' : '#10b98140'}`, 
+                  <div
+                    key={alert.id}
+                    style={{
+                      padding: '12px',
+                      background: 'var(--bg-primary)',
+                      border: `1px solid ${isExpense ? '#ef444440' : '#10b98140'}`,
                       borderRadius: 'var(--border-radius-sm)',
                       display: 'flex',
                       flexDirection: 'column',
@@ -320,10 +343,10 @@ export default function Dashboard({
                       <span style={{ fontSize: '11px', background: 'var(--bg-accent)', border: '1px solid var(--border-color)', padding: '2px 8px', borderRadius: '4px', fontWeight: '700', color: 'var(--text-secondary)' }}>
                         {alert.bankName}
                       </span>
-                      <span style={{ 
-                        fontSize: '10px', 
-                        padding: '2px 6px', 
-                        borderRadius: '4px', 
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
                         fontWeight: '700',
                         background: isExpense ? '#ef444415' : '#10b98115',
                         color: isExpense ? '#ef4444' : '#10b981'
@@ -339,14 +362,24 @@ export default function Dashboard({
                       <strong style={{ fontSize: '14px', color: isExpense ? '#ef4444' : '#10b981' }}>
                         {isExpense ? '-' : '+'} Rs. {alert.amount.toLocaleString()}
                       </strong>
-                      <button 
-                        onClick={() => openResolveModal(alert)}
-                        className="btn-primary" 
-                        style={{ padding: '4px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      >
-                        <span>Resolve</span>
-                        <ArrowRight size={12} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDiscardAlert(alert.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                          title="Discard / Delete Alert"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                        <button
+                          onClick={() => openResolveModal(alert)}
+                          className="btn-primary"
+                          style={{ padding: '4px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <span>Resolve</span>
+                          <ArrowRight size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -359,19 +392,19 @@ export default function Dashboard({
           <div>
             <h3 style={{ fontWeight: '700', fontSize: '1.0625rem', marginBottom: '4px' }}>✍️ Manual Ledger Log</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '12px' }}>Input casual cash transactions manually.</p>
-            
+
             <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <input 
-                type="text" 
-                placeholder="Transaction description" 
+              <input
+                type="text"
+                placeholder="Transaction description"
                 value={newDesc}
                 onChange={e => setNewDesc(e.target.value)}
                 required
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <input 
-                  type="number" 
-                  placeholder="Amount (Rs.)" 
+                <input
+                  type="number"
+                  placeholder="Amount (Rs.)"
                   value={newAmt}
                   onChange={e => setNewAmt(e.target.value)}
                   required
@@ -381,15 +414,25 @@ export default function Dashboard({
                   <option value="income">Inflow (+)</option>
                 </select>
               </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <select value={newCat} onChange={e => setNewCat(e.target.value)}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', alignItems: 'center' }}>
+                <select value={newCat} onChange={e => setNewCat(e.target.value)} style={{ height: '42px' }}>
                   {categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
                 </select>
-                <select value={newAcc} onChange={e => setNewAcc(e.target.value)}>
-                  <option value="Cash">💵 Unallocated Cash</option>
-                  {trackedAccounts.map(a => <option key={a.id} value={a.bankName}>🏦 {a.bankName}</option>)}
-                </select>
+                <CustomDropdown
+                  options={[
+                    { value: 'Cash', label: 'Default Cash Account', type: 'cash' },
+                    ...trackedAccounts.filter(a => a.isActive !== false && a.type !== 'cash').map(a => ({
+                      value: a.bankName,
+                      label: a.bankName,
+                      bankName: a.bankName,
+                      accountMask: a.accountMask,
+                      logo_url: a.logo_url
+                    }))
+                  ]}
+                  value={newAcc}
+                  onChange={setNewAcc}
+                />
               </div>
 
               {submitError && <span style={{ color: 'var(--color-danger)', fontSize: '12px', fontWeight: '600' }}>⚠️ {submitError}</span>}
@@ -407,10 +450,10 @@ export default function Dashboard({
                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{daysRemaining} day(s) left</span>
               </div>
               <div style={{ background: 'var(--bg-secondary)', height: '10px', borderRadius: '5px', overflow: 'hidden', border: '1px solid var(--border-color)', marginBottom: '6px' }}>
-                <div style={{ 
-                  width: `${Math.min((planTotalSpent / activePlan.totalPool) * 100, 100)}%`, 
-                  background: planTotalSpent > activePlan.totalPool ? 'var(--color-danger)' : 'var(--color-primary)', 
-                  height: '100%' 
+                <div style={{
+                  width: `${Math.min((planTotalSpent / activePlan.totalPool) * 100, 100)}%`,
+                  background: planTotalSpent > activePlan.totalPool ? 'var(--color-danger)' : 'var(--color-primary)',
+                  height: '100%'
                 }}></div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -430,16 +473,16 @@ export default function Dashboard({
             const catConfig = getCategoryConfig(t.category);
             const isExpense = t.type === 'expense' || t.type === 'debit' || t.type === 'transfer';
             return (
-              <div 
-                key={t.id} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  padding: '0.75rem 1.125rem', 
-                  background: 'var(--bg-primary)', 
-                  borderRadius: 'var(--border-radius-sm)', 
-                  border: '1px solid var(--border-color)' 
+              <div
+                key={t.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.75rem 1.125rem',
+                  background: 'var(--bg-primary)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  border: '1px solid var(--border-color)'
                 }}
               >
                 <div>
@@ -447,12 +490,12 @@ export default function Dashboard({
                   <div style={{ display: 'flex', gap: '10px', marginTop: '0.25rem', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '600', alignItems: 'center' }}>
                     <span>{t.date}</span>
                     <span>•</span>
-                    <span style={{ 
-                      color: catConfig.color, 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
+                    <span style={{
+                      color: catConfig.color,
+                      display: 'inline-flex',
+                      alignItems: 'center',
                       gap: '0.25rem',
-                      background: `${catConfig.color}15`, 
+                      background: `${catConfig.color}15`,
                       padding: '2px 6px',
                       borderRadius: '4px'
                     }}>
@@ -487,8 +530,8 @@ export default function Dashboard({
           padding: '1rem'
         }}>
           <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '480px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
-            <button 
-              onClick={() => setResolvingAlert(null)} 
+            <button
+              onClick={() => setResolvingAlert(null)}
               style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
             >
               <X size={20} />
@@ -504,11 +547,11 @@ export default function Dashboard({
             </div>
 
             <form onSubmit={handleResolveAlert} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '4px' }}>Transaction Description (Edit to readable name)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={resDesc}
                   onChange={e => setResDesc(e.target.value)}
                   placeholder="e.g. Bought Groceries at BhatBhateni"
@@ -516,73 +559,75 @@ export default function Dashboard({
                 />
               </div>
 
-              {resolvingAlert.type === 'debit' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '16px', background: 'var(--bg-primary)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                    <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input 
-                        type="radio" 
-                        name="txKind" 
-                        checked={!isTransfer} 
-                        onChange={() => setIsTransfer(false)} 
-                      />
-                      Category Expense
-                    </label>
-                    <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input 
-                        type="radio" 
-                        name="txKind" 
-                        checked={isTransfer} 
-                        onChange={() => setIsTransfer(true)} 
-                      />
-                      Internal Bank Transfer
-                    </label>
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '16px', background: 'var(--bg-primary)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      type="radio"
+                      name="txKind"
+                      checked={!isTransfer}
+                      onChange={() => setIsTransfer(false)}
+                    />
+                    Category {resolvingAlert.type === 'debit' ? 'Expense' : 'Income'}
+                  </label>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      type="radio"
+                      name="txKind"
+                      checked={isTransfer}
+                      onChange={() => setIsTransfer(true)}
+                    />
+                    Internal Bank Transfer
+                  </label>
+                </div>
 
-                  {isTransfer && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Transfer Money Into (Destination Bank Account)</label>
-                        <select 
-                          value={destAccountId}
-                          onChange={e => setDestAccountId(e.target.value)}
-                          required={isTransfer}
-                        >
-                          <option value="">-- Select Bank --</option>
-                          {trackedAccounts.filter(a => a.bankName !== resolvingAlert.bankName).map(a => (
-                            <option key={a.id} value={a.id}>{a.bankName} ({a.accountMask})</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Transfer Fee (Rs.)</label>
-                        <input 
-                          type="number" 
-                          value={serviceFee}
-                          onChange={e => setServiceFee(e.target.value)}
-                          placeholder="e.g. 15"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {!isTransfer && (
+                {isTransfer && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-secondary)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '4px' }}>Category</label>
-                      <select value={resCat} onChange={e => setResCat(e.target.value)}>
-                        {categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
-                      </select>
+                      <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>
+                        {resolvingAlert.type === 'debit' ? 'Transfer Money Into (Destination Bank)' : 'Money Transferred From (Source Bank)'}
+                      </label>
+                      <CustomDropdown
+                        options={trackedAccounts
+                          .filter(a => a.isActive !== false && a.bankName !== resolvingAlert.bankName)
+                          .map(a => ({
+                            value: a.id,
+                            label: `${a.bankName} (${a.accountMask || 'No mask'})`,
+                            bankName: a.bankName,
+                            accountMask: a.accountMask,
+                            logo_url: a.logo_url
+                          }))}
+                        value={destAccountId}
+                        onChange={setDestAccountId}
+                        placeholder={resolvingAlert.type === 'debit' ? '-- Select Destination Bank --' : '-- Select Source Bank --'}
+                      />
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '4px' }}>Income Category</label>
-                  <select value={resCat} onChange={e => setResCat(e.target.value)}>
-                    {categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
-                  </select>
-                </div>
-              )}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '4px' }}>Bank Charge / Transfer Fee (Rs.)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={serviceFee}
+                        onChange={e => setServiceFee(e.target.value)}
+                        placeholder="e.g. 10 or 15"
+                      />
+                      <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        If specified, this fee will be deducted from the sending bank's balance as a bank charge.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {!isTransfer && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '4px' }}>Category</label>
+                    <select value={resCat} onChange={e => setResCat(e.target.value)}>
+                      {categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
 
               {resolveError && (
                 <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: '600', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '8px 12px', borderRadius: '6px' }}>
@@ -591,9 +636,9 @@ export default function Dashboard({
               )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button 
-                  type="button" 
-                  className="btn-primary" 
+                <button
+                  type="button"
+                  className="btn-primary"
                   onClick={() => setResolvingAlert(null)}
                   style={{ flex: 1, background: 'var(--bg-accent)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', boxShadow: 'none' }}
                 >

@@ -21,7 +21,7 @@ export default function ThemeSettings({ colorTheme, setColorTheme }) {
         <div className="theme-palette-grid">
           {swatches.map(s => (
             <div key={s.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              <div 
+              <div
                 className={`theme-swatch ${colorTheme === s.id ? 'active' : ''}`}
                 style={{ backgroundColor: s.color }}
                 onClick={() => setColorTheme(s.id)}

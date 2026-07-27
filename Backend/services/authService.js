@@ -23,7 +23,6 @@ const register = async ({ email, password, name }) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await userRepo.create(email, passwordHash, name);
 
-  // Send registration OTP
   await otpService.sendOtp(email, 'email_verification');
 
   return {
@@ -40,11 +39,11 @@ const login = async ({ email, password }) => {
   if (!isMatch) throw new AppError('Invalid email or password.', 401);
 
   if (!user.is_verified) {
-    // Try sending a new OTP since they are not verified
+
     try {
       await otpService.sendOtp(email, 'email_verification');
     } catch (e) {
-      // Ignore rate limit error during login so we can still throw EMAIL_NOT_VERIFIED
+
     }
     throw new AppError('EMAIL_NOT_VERIFIED', 403);
   }
@@ -64,7 +63,6 @@ const verifyEmailOtp = async ({ email, code }) => {
   const isValid = await otpService.verifyOtp(email, code, 'email_verification');
   if (!isValid) throw new AppError('Invalid or expired OTP code.', 400);
 
-  // Mark as verified
   const updatedUser = await userRepo.updateById(user.id, { is_verified: true });
 
   const token = signToken(updatedUser);
@@ -89,7 +87,7 @@ const resendVerificationOtp = async ({ email, purpose }) => {
 const requestPasswordReset = async ({ email }) => {
   const user = await userRepo.findByEmail(email);
   if (!user) {
-    // Security best practice: Do not disclose if account exists
+
     return { message: 'If the email matches an account, a password reset code has been sent.' };
   }
 
@@ -104,9 +102,8 @@ const resetPassword = async ({ email, code, newPassword }) => {
   const isValid = await otpService.verifyOtp(email, code, 'password_reset');
   if (!isValid) throw new AppError('Invalid or expired OTP code.', 400);
 
-  // Update password
   const newPasswordHash = await bcrypt.hash(newPassword, 10);
-  // Resetting password also forces email verification if they were not verified yet
+
   await userRepo.updateById(user.id, { password_hash: newPasswordHash, is_verified: true });
 
   return { message: 'Password has been reset successfully. You can now login.' };
