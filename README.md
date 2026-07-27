@@ -25,20 +25,16 @@ Ensure you have the following installed:
 
 ---
 
-### 2. Database Setup
+### 2. Database Creation
 
-1. Open PostgreSQL and create a database named `BachatGara`:
-   ```sql
-   CREATE DATABASE "BachatGara";
-   ```
-2. Run the initial database schema script found in `Backend/schema.sql`:
-   ```bash
-   psql -U postgres -d BachatGara -f Backend/schema.sql
-   ```
+Open PostgreSQL (e.g. pgAdmin or `psql`) and create a blank database named `BachatGara`:
+```sql
+CREATE DATABASE "BachatGara";
+```
 
 ---
 
-### 3. Backend Setup
+### 3. Backend Setup & Single-Command DB Initialization
 
 1. Navigate to the `Backend` directory:
    ```bash
@@ -70,15 +66,17 @@ Ensure you have the following installed:
    SMTP_USER=your_email@gmail.com
    SMTP_PASSWORD=your_app_password
    ```
-5. Initialize database tables and bank logos:
+5. **Initialize database schema & seed bank logos in one command**:
    ```bash
    npm run db:init
    ```
+   *(This single command automatically loads `schema.sql`, creates all required tables, triggers, and seeds the canonical Nepalese bank records.)*
+
 6. Start the backend development server:
    ```bash
    npm run dev
    ```
-   *The backend will start at `http://localhost:5000` (and output your local network IP for the Android app).*
+   *The backend will start at `http://localhost:5000` (and print your local network IP address for the Android app).*
 
 ---
 
@@ -133,7 +131,7 @@ npm test
 
 ---
 
-## 📄 Features
+## 📄 Key Features
 
 - **Automated SMS Parsing**: Reads and parses Nepalese commercial bank transaction alerts (Debit/Credit/Transfers).
 - **Observer Pattern Real-Time Sync**: Instant account updates and SMS queue resolutions pushed live via SSE stream.

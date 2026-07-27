@@ -1,15 +1,14 @@
 {
-  "name": "backend",
+  "name": "bachatgara-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "BachatGara Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "jest",
-    "initdb": "node init-db.js",
-    "seed-banks": "node seedBanks.js",
-    "db:init": "node init-db.js"
+    "db:init": "node init-db.js",
+    "seed-banks": "node seedBanks.js"
   },
   "keywords": [],
   "author": "",
